@@ -1,0 +1,103 @@
+import { View, Text, StyleSheet, Image, ImageSourcePropType } from 'react-native';
+import { Colors } from '@/constants/theme';
+
+export interface Slide {
+  id: string;
+  brand: string;
+  title: string;
+  subtitle: string;
+  bullets: string[];
+  durationSeconds: number;
+  image?: ImageSourcePropType;
+}
+
+interface SlideCardProps {
+  slide: Slide;
+}
+
+export function SlideCard({ slide }: SlideCardProps) {
+  return (
+    <View style={styles.card}>
+      <View style={styles.content}>
+        <View style={styles.textBlock}>
+          <Text style={styles.brand}>{slide.brand}</Text>
+          <Text style={styles.title}>{slide.title}</Text>
+          <Text style={styles.subtitle}>{slide.subtitle}</Text>
+          <View style={styles.bullets}>
+            {slide.bullets.map((b, i) => (
+              <View key={i} style={styles.bulletRow}>
+                <View style={styles.bulletDot} />
+                <Text style={styles.bulletText}>{b}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {slide.image && (
+          <Image source={slide.image} style={styles.image} resizeMode="cover" />
+        )}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    overflow: 'hidden',
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  textBlock: {
+    flex: 1,
+    padding: 32,
+    justifyContent: 'center',
+    gap: 12,
+  },
+  brand: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.primary,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#111827',
+    lineHeight: 34,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: -4,
+  },
+  bullets: {
+    gap: 8,
+    marginTop: 8,
+  },
+  bulletRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  bulletDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.primary,
+  },
+  bulletText: {
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  image: {
+    width: '45%',
+    height: '100%',
+  },
+});

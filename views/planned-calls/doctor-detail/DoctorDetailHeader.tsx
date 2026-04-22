@@ -1,0 +1,91 @@
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { Colors } from '@/constants/theme';
+
+interface DoctorDetailHeaderProps {
+  name: string;
+  specialty: string;
+}
+
+export function DoctorDetailHeader({ name, specialty }: DoctorDetailHeaderProps) {
+  return (
+    <View style={styles.wrapper}>
+      <SafeAreaView edges={['top']}>
+        <View style={styles.topRow}>
+          <Pressable
+            onPress={() => router.back()}
+            style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
+          >
+            <Ionicons name="chevron-back" size={20} color={Colors.textOnDark} />
+          </Pressable>
+        </View>
+      </SafeAreaView>
+
+      <View style={styles.profileRow}>
+        <View style={styles.avatarCard}>
+          <Ionicons name="pulse-outline" size={36} color={Colors.primary} />
+        </View>
+        <View style={styles.nameBlock}>
+          <Text style={styles.name}>{name}</Text>
+          <Text style={styles.specialty}>{specialty}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrapper: {
+    backgroundColor: Colors.secondary,
+    paddingBottom: 50,
+  },
+  topRow: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  backBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: 20,
+    gap: 14,
+    marginTop: 8,
+  },
+  avatarCard: {
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+    backgroundColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  nameBlock: {
+    paddingBottom: 6,
+    gap: 2,
+  },
+  name: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.25)',
+  },
+  specialty: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.5)',
+    fontWeight: '500',
+  },
+});
