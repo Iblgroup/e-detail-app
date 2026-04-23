@@ -57,28 +57,23 @@ export default function CallScreen({ doctorId, callType = 'planned', doctorName 
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [slideTimes, setSlideTimes] = useState<number[]>(() => DEMO_SLIDES.map(() => 0));
   const [slidesViewed, setSlidesViewed] = useState(0);
-  const [canEndCall, setCanEndCall] = useState(false);
   const [isSummaryVisible, setIsSummaryVisible] = useState(false);
   const hasEndedRef = useRef(false);
 
   const handleRequestEndCall = useCallback(() => {
-    if (!canEndCall) return;
-
-    setIsSummaryVisible(true);
-  }, [canEndCall]);
-
-  const handleCompleteSlides = useCallback(() => {
-    setCanEndCall(true);
     setIsSummaryVisible(true);
   }, []);
 
-  const handleSlidesViewedChange = useCallback((count: number, canEnd: boolean) => {
+  const handleCompleteSlides = useCallback(() => {
+    setIsSummaryVisible(true);
+  }, []);
+
+  const handleSlidesViewedChange = useCallback((count: number) => {
     setSlidesViewed((previous) => Math.max(previous, count));
-    setCanEndCall(canEnd);
   }, []);
 
   const handleSubmitSummary = useCallback((summary: CallSummaryData) => {
-    if (hasEndedRef.current || !canEndCall) return;
+    if (hasEndedRef.current) return;
 
     hasEndedRef.current = true;
     markCallCompleted(doctorId, callType);
@@ -97,13 +92,13 @@ export default function CallScreen({ doctorId, callType = 'planned', doctorName 
         slideTimes: slideTimes.join(','),
       },
     });
-  }, [canEndCall, callType, doctorId, doctorName, elapsedSeconds, slideTimes, slidesViewed]);
+  }, [callType, doctorId, doctorName, elapsedSeconds, slideTimes, slidesViewed]);
 
   return (
     <View style={styles.screen}>
       <CallHeader
         elapsedSeconds={elapsedSeconds}
-        canEndCall={canEndCall}
+        canEndCall
         onEndCall={handleRequestEndCall}
       />
       <View style={styles.body}>

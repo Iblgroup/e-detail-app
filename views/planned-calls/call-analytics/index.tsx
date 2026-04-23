@@ -26,6 +26,16 @@ function formatDuration(seconds: number) {
   return `${minutes}m ${remainingSeconds}s`;
 }
 
+function formatSlideTime(seconds: number) {
+  const safeSeconds = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = safeSeconds % 60;
+
+  if (minutes === 0) return `${remainingSeconds}s`;
+
+  return `${minutes}m ${remainingSeconds}s`;
+}
+
 function getDoctorInterest(feedback: string) {
   return feedback.trim().length > 0 && feedback !== 'No feedback provided' ? 'High' : 'Medium';
 }
@@ -47,6 +57,10 @@ export default function CallAnalytics({
     label: `Slide ${index + 1}`,
     value: seconds,
     valueLabel: `${seconds}s`,
+  }));
+  const slideTimeSummary = safeSlideTimes.map((seconds, index) => ({
+    label: `Slide ${index + 1}`,
+    valueLabel: formatSlideTime(seconds),
   }));
 
   return (
@@ -125,13 +139,22 @@ export default function CallAnalytics({
                 showValueLabels
               />
             </View>
+
+            <View style={styles.slideTimeList}>
+              {slideTimeSummary.map((item) => (
+                <View key={item.label} style={styles.slideTimeRow}>
+                  <Text style={styles.slideTimeLabel}>{item.label}</Text>
+                  <Text style={styles.slideTimeValue}>{item.valueLabel}</Text>
+                </View>
+              ))}
+            </View>
           </View>
 
           <View style={styles.sideColumn}>
             <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Doctor's Feedback</Text>
+              <Text style={styles.sectionTitle}>Doctor&apos;s Feedback</Text>
               <View style={styles.feedbackBox}>
-                <Text style={styles.feedbackText}>"{feedback}"</Text>
+                <Text style={styles.feedbackText}>&ldquo;{feedback}&rdquo;</Text>
               </View>
             </View>
 
@@ -273,6 +296,29 @@ const styles = StyleSheet.create({
   },
   chartWrapper: {
     marginTop: 18,
+  },
+  slideTimeList: {
+    marginTop: 18,
+    gap: 10,
+  },
+  slideTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+  },
+  slideTimeLabel: {
+    color: Colors.text,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  slideTimeValue: {
+    color: Colors.primary,
+    fontSize: 13,
+    fontWeight: '800',
   },
   feedbackBox: {
     borderLeftWidth: 3,

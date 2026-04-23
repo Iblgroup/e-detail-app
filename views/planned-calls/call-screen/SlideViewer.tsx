@@ -23,11 +23,11 @@ function formatTime(seconds: number) {
   return `${m}:${s}`;
 }
 
-function creditSlide(seconds: number[], index: number, duration: number) {
-  if ((seconds[index] ?? 0) >= duration) return seconds;
+function addSlideTime(seconds: number[], index: number, duration: number) {
+  if (duration <= 0) return seconds;
 
   const next = [...seconds];
-  next[index] = Math.max(next[index] ?? 0, duration);
+  next[index] = (next[index] ?? 0) + duration;
   return next;
 }
 
@@ -41,49 +41,49 @@ export function SlideViewer({
 }: SlideViewerProps) {
   const [current, setCurrent] = useState(0);
   const [slideElapsed, setSlideElapsed] = useState(0);
-  const [creditedSeconds, setCreditedSeconds] = useState<number[]>(() => slides.map(() => 0));
+  const [spentSeconds, setSpentSeconds] = useState<number[]>(() => slides.map(() => 0));
 
   const durations = useMemo(
     () => slides.map((slide) => normalizeDuration(slide.durationSeconds)),
     [slides]
   );
   const currentDuration = durations[current] ?? 1;
-  const remainingSeconds = Math.max(0, currentDuration - slideElapsed);
-  const completedSeconds = Math.min(slideElapsed, currentDuration);
   const slidesKey = useMemo(() => slides.map((slide) => slide.id).join('|'), [slides]);
+  const currentCommittedSeconds = spentSeconds[current] ?? 0;
+  const currentTotalSeconds = currentCommittedSeconds + slideElapsed;
+  const currentCompletedBeforeVisit = currentCommittedSeconds >= currentDuration;
 
-  const totalElapsed = useMemo(
-    () =>
-      creditedSeconds.reduce((total, credited, index) => {
-        if (index === current) {
-          return total + Math.max(credited, Math.min(slideElapsed, durations[index] ?? 1));
-        }
-
-        return total + credited;
-      }, 0),
-    [creditedSeconds, current, durations, slideElapsed]
-  );
   const slideTimes = useMemo(
     () =>
-      creditedSeconds.map((credited, index) => {
+      spentSeconds.map((spent, index) => {
         if (index === current) {
-          return Math.max(credited, Math.min(slideElapsed, durations[index] ?? 1));
+          return spent + slideElapsed;
         }
 
-        return credited;
+        return spent;
       }),
-    [creditedSeconds, current, durations, slideElapsed]
+    [current, slideElapsed, spentSeconds]
   );
+  const totalElapsed = useMemo(
+    () => slideTimes.reduce((total, seconds) => total + seconds, 0),
+    [slideTimes]
+  );
+  const progressSeconds = useMemo(
+    () => slideTimes.map((seconds, index) => Math.min(seconds, durations[index] ?? 1)),
+    [durations, slideTimes]
+  );
+  const remainingSeconds = Math.max(0, currentDuration - (progressSeconds[current] ?? 0));
+  const completedSeconds = Math.min(progressSeconds[current] ?? 0, currentDuration);
   const completedSlides = useMemo(
     () =>
-      creditedSeconds.filter((seconds, index) => seconds >= (durations[index] ?? 1)).length,
-    [creditedSeconds, durations]
+      progressSeconds.filter((seconds, index) => seconds >= (durations[index] ?? 1)).length,
+    [durations, progressSeconds]
   );
   const allSlidesCompleted = slides.length > 0 && completedSlides >= slides.length;
   const isLastSlide = current === slides.length - 1;
   const previousSlidesCompleted =
     slides.length <= 1 ||
-    creditedSeconds
+    progressSeconds
       .slice(0, Math.max(0, slides.length - 1))
       .every((seconds, index) => seconds >= (durations[index] ?? 1));
   const canEndCall = slides.length > 0 && (allSlidesCompleted || (isLastSlide && previousSlidesCompleted));
@@ -92,7 +92,7 @@ export function SlideViewer({
   useEffect(() => {
     setCurrent(0);
     setSlideElapsed(0);
-    setCreditedSeconds(slides.map(() => 0));
+    setSpentSeconds(Array.from({ length: slides.length }, () => 0));
   }, [slides.length, slidesKey]);
 
   useEffect(() => {
@@ -116,47 +116,57 @@ export function SlideViewer({
     if (isPaused || slides.length === 0) return;
 
     const interval = setInterval(() => {
-      setSlideElapsed((elapsed) => Math.min(currentDuration, elapsed + 1));
+      setSlideElapsed((elapsed) => elapsed + 1);
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [current, currentDuration, isPaused, slides.length]);
+  }, [current, isPaused, slides.length]);
 
   useEffect(() => {
-    if (slides.length === 0 || slideElapsed < currentDuration) return;
+    if (
+      slides.length === 0 ||
+      currentCompletedBeforeVisit ||
+      currentTotalSeconds < currentDuration
+    ) {
+      return;
+    }
 
-    const nextCreditedSeconds = creditSlide(creditedSeconds, current, currentDuration);
-    setCreditedSeconds(nextCreditedSeconds);
+    const nextSpentSeconds = addSlideTime(spentSeconds, current, slideElapsed);
+    setSpentSeconds(nextSpentSeconds);
 
     if (current < slides.length - 1) {
       const nextIndex = current + 1;
       setCurrent(nextIndex);
       setSlideElapsed(0);
     } else if (
-      nextCreditedSeconds !== creditedSeconds &&
-      nextCreditedSeconds.every((seconds, index) => seconds >= (durations[index] ?? 1))
+      nextSpentSeconds.every(
+        (seconds, index) => Math.min(seconds, durations[index] ?? 1) >= (durations[index] ?? 1)
+      )
     ) {
+      setSlideElapsed(0);
       onComplete?.();
     }
   }, [
-    creditedSeconds,
     current,
+    currentCompletedBeforeVisit,
     currentDuration,
+    currentTotalSeconds,
     durations,
     onComplete,
     slideElapsed,
     slides.length,
+    spentSeconds,
   ]);
 
   const goToSlide = useCallback(
     (target: number) => {
       if (target < 0 || target >= slides.length || target === current) return;
 
-      setCreditedSeconds((seconds) => creditSlide(seconds, current, currentDuration));
+      setSpentSeconds((seconds) => addSlideTime(seconds, current, slideElapsed));
       setCurrent(target);
       setSlideElapsed(0);
     },
-    [current, currentDuration, slides.length]
+    [current, slideElapsed, slides.length]
   );
 
   const prev = () => goToSlide(current - 1);
