@@ -51,9 +51,15 @@ interface CallScreenProps {
   doctorId?: string;
   callType?: CallType;
   doctorName?: string;
+  returnToNewDoctor?: boolean;
 }
 
-export default function CallScreen({ doctorId, callType = 'planned', doctorName }: CallScreenProps) {
+export default function CallScreen({
+  doctorId,
+  callType = 'planned',
+  doctorName,
+  returnToNewDoctor = false,
+}: CallScreenProps) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [slideTimes, setSlideTimes] = useState<number[]>(() => DEMO_SLIDES.map(() => 0));
   const [slidesViewed, setSlidesViewed] = useState(0);
@@ -61,10 +67,6 @@ export default function CallScreen({ doctorId, callType = 'planned', doctorName 
   const hasEndedRef = useRef(false);
 
   const handleRequestEndCall = useCallback(() => {
-    setIsSummaryVisible(true);
-  }, []);
-
-  const handleCompleteSlides = useCallback(() => {
     setIsSummaryVisible(true);
   }, []);
 
@@ -76,7 +78,26 @@ export default function CallScreen({ doctorId, callType = 'planned', doctorName 
     if (hasEndedRef.current) return;
 
     hasEndedRef.current = true;
-    markCallCompleted(doctorId, callType);
+    markCallCompleted(doctorId, callType, {
+      doctorName,
+      durationSeconds: elapsedSeconds,
+      slidesViewed,
+      totalSlides: DEMO_SLIDES.length,
+      feedback: summary.feedback || 'No feedback provided',
+      slideTimes,
+    });
+
+    if (callType === 'unplanned' && returnToNewDoctor) {
+      router.replace({
+        pathname: '/(tabs)/unplanned-calls',
+        params: {
+          openNewDoctorForm: '1',
+          pendingNewDoctorId: doctorId ?? 'unknown',
+        },
+      });
+      return;
+    }
+
     router.replace({
       pathname: '/call-analytics/[id]',
       params: {
@@ -90,9 +111,10 @@ export default function CallScreen({ doctorId, callType = 'planned', doctorName 
         jointCall: summary.jointCall,
         samplesProvided: summary.samplesProvided,
         slideTimes: slideTimes.join(','),
+        returnToNewDoctor: returnToNewDoctor ? '1' : '0',
       },
     });
-  }, [callType, doctorId, doctorName, elapsedSeconds, slideTimes, slidesViewed]);
+  }, [callType, doctorId, doctorName, elapsedSeconds, returnToNewDoctor, slideTimes, slidesViewed]);
 
   return (
     <View style={styles.screen}>
@@ -108,7 +130,6 @@ export default function CallScreen({ doctorId, callType = 'planned', doctorName 
           onElapsedChange={setElapsedSeconds}
           onSlideTimesChange={setSlideTimes}
           onSlidesViewedChange={handleSlidesViewedChange}
-          onComplete={handleCompleteSlides}
         />
       </View>
       <CallSummaryModal

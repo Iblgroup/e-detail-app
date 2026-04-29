@@ -31,11 +31,21 @@ const specialtyData: BarChartDataPoint[] = [
   { label: 'Pedia', value: 24 },
   { label: 'Ortho', value: 18 },
 ];
+
+const rfiData = {
+  planned: 320,
+  completed: 284,
+};
+
 const periodOptions = ['This Month', 'Last Month', 'This Quarter', 'This Year'];
 
 export default function AnalyticsScreen() {
   const [selectedPeriod, setSelectedPeriod] = useState(periodOptions[0]);
   const [periodMenuVisible, setPeriodMenuVisible] = useState(false);
+  const outstandingCalls = Math.max(0, rfiData.planned - rfiData.completed);
+  const rfiCompletion = rfiData.planned > 0
+    ? Math.round((rfiData.completed / rfiData.planned) * 100)
+    : 0;
 
   const selectPeriod = (period: string) => {
     setSelectedPeriod(period);
@@ -105,6 +115,44 @@ export default function AnalyticsScreen() {
             tone={metric.tone}
           />
         ))}
+      </View>
+
+      <View style={styles.rfiCard}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="swap-horizontal-outline" size={18} color={Colors.primary} />
+          <Text style={styles.sectionTitle}>RFI</Text>
+        </View>
+        <Text style={styles.rfiSubtitle}>Plan vs Completed</Text>
+
+        <View style={styles.rfiStatsRow}>
+          <View style={styles.rfiStatBox}>
+            <Text style={styles.rfiStatLabel}>Planned</Text>
+            <Text style={styles.rfiStatValue}>{rfiData.planned}</Text>
+          </View>
+          <View style={styles.rfiStatBox}>
+            <Text style={styles.rfiStatLabel}>Completed</Text>
+            <Text style={styles.rfiStatValue}>{rfiData.completed}</Text>
+          </View>
+        </View>
+
+        <View style={styles.rfiProgressBlock}>
+          <View style={styles.rfiProgressHeader}>
+            <Text style={styles.rfiProgressLabel}>Completion Progress</Text>
+            <Text style={styles.rfiProgressValue}>{rfiCompletion}%</Text>
+          </View>
+          <View style={styles.rfiTrack}>
+            <View style={[styles.rfiFill, { width: `${rfiCompletion}%` }]} />
+          </View>
+        </View>
+
+        <View style={styles.rfiFooterRow}>
+          <View style={styles.rfiFooterPill}>
+            <Text style={styles.rfiFooterPillText}>{outstandingCalls} Remaining</Text>
+          </View>
+          <Text style={styles.rfiFooterText}>
+            {rfiData.completed} of {rfiData.planned} planned calls completed
+          </Text>
+        </View>
       </View>
 
       <View style={styles.chartsGrid}>
@@ -212,6 +260,17 @@ const styles = StyleSheet.create({
   chartsGrid: {
     gap: 16,
   },
+  rfiCard: {
+    borderRadius: 18,
+    backgroundColor: Colors.surface,
+    padding: 18,
+    gap: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   chartCard: {
     borderRadius: 18,
     backgroundColor: Colors.surface,
@@ -232,6 +291,89 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     fontSize: 18,
     fontWeight: '900',
+  },
+  rfiSubtitle: {
+    color: Colors.textMuted,
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: -8,
+  },
+  rfiStatsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  rfiStatBox: {
+    flex: 1,
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    gap: 6,
+  },
+  rfiStatLabel: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  rfiStatValue: {
+    color: Colors.text,
+    fontSize: 28,
+    fontWeight: '900',
+  },
+  rfiProgressBlock: {
+    gap: 8,
+  },
+  rfiProgressHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  rfiProgressLabel: {
+    color: Colors.text,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  rfiProgressValue: {
+    color: Colors.primary,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  rfiTrack: {
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: '#E2E8F0',
+    overflow: 'hidden',
+  },
+  rfiFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: Colors.primary,
+  },
+  rfiFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  rfiFooterPill: {
+    borderRadius: 999,
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  rfiFooterPillText: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  rfiFooterText: {
+    flex: 1,
+    textAlign: 'right',
+    color: Colors.textMuted,
+    fontSize: 12,
+    fontWeight: '600',
   },
   lineChartWrapper: {
     marginTop: 20,

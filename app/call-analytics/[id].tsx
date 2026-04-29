@@ -42,11 +42,14 @@ export default function CallAnalyticsRoute() {
     slideTimes?: string;
     callType?: CallType;
     doctorName?: string;
+    returnToNewDoctor?: string;
   }>();
 
   const doctorId = Array.isArray(params.id) ? params.id[0] : params.id;
   const normalizedCallType: CallType = params.callType === 'unplanned' ? 'unplanned' : 'planned';
   const doctorName = Array.isArray(params.doctorName) ? params.doctorName[0] : params.doctorName;
+  const returnToNewDoctor =
+    (Array.isArray(params.returnToNewDoctor) ? params.returnToNewDoctor[0] : params.returnToNewDoctor) === '1';
 
   return (
     <CallAnalytics
@@ -57,6 +60,7 @@ export default function CallAnalyticsRoute() {
       totalSlides={parseNumber(params.totalSlides, 1)}
       feedback={params.feedback || 'No feedback provided'}
       slideTimes={parseSlideTimes(params.slideTimes)}
+      returnToNewDoctor={returnToNewDoctor}
     />
   );
 }

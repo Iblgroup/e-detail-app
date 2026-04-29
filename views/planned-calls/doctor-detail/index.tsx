@@ -1,15 +1,15 @@
-import { useState } from 'react';
-import { ScrollView, View, StyleSheet } from 'react-native';
 import { Colors } from '@/constants/theme';
-import { DoctorDetailHeader } from './DoctorDetailHeader';
-import { ProfessionalDetailsCard } from './ProfessionalDetailsCard';
-import { RecentHistoryCard, HistoryItem } from './RecentHistoryCard';
-import { ContactInfoCard } from './ContactInfoCard';
-import { ArrivedButton } from './ArrivedButton';
 import { router } from 'expo-router';
-import { StartCallButton } from './StartCallButton';
-import { CallCompletedCard } from './CallCompletedCard';
+import { useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { CallType } from '../callTypes';
+import { ArrivedButton } from './ArrivedButton';
+import { CallCompletedCard } from './CallCompletedCard';
+import { DoctorDetailHeader } from './DoctorDetailHeader';
+import { PlannedCallItem, PlannedCallsCard } from './PlannedCallsCard';
+import { ProfessionalDetailsCard } from './ProfessionalDetailsCard';
+import { HistoryItem } from './RecentHistoryCard';
+import { StartCallButton } from './StartCallButton';
 
 export interface DoctorDetailData {
   id: string;
@@ -18,8 +18,11 @@ export interface DoctorDetailData {
   hospital: string;
   address: string;
   lastVisit: string;
-  rating: string;
+  doctorRating: string;
+  pmdcNumber: string;
+  scheduledTime?: string;
   history: HistoryItem[];
+  plannedCalls?: PlannedCallItem[];
 }
 
 interface DoctorDetailProps {
@@ -34,6 +37,19 @@ export default function DoctorDetail({
   callType = 'planned',
 }: DoctorDetailProps) {
   const [arrived, setArrived] = useState(false);
+  const plannedCallsSource = doctor.plannedCalls ?? [
+    {
+      id: `${doctor.id}-planned-call`,
+      title: 'E-Detailing Call',
+      scheduledTime: doctor.scheduledTime ?? 'Time TBD',
+      location: doctor.hospital,
+      status: 'pending' as const,
+    },
+  ];
+  const plannedCalls = plannedCallsSource.map((item, index) => ({
+    ...item,
+    status: completed && index === 0 ? 'completed' as const : item.status ?? 'pending' as const,
+  }));
 
   return (
     <View style={styles.screen}>
@@ -48,10 +64,12 @@ export default function DoctorDetail({
           hospital={doctor.hospital}
           address={doctor.address}
           lastVisit={doctor.lastVisit}
-          rating={doctor.rating}
+          doctorRating={doctor.doctorRating}
+          pmdcNumber={doctor.pmdcNumber}
+          scheduledTime={doctor.scheduledTime}
         />
 
-        <RecentHistoryCard items={doctor.history} />
+        <PlannedCallsCard items={plannedCalls} />
 
         {completed ? (
           <CallCompletedCard />
@@ -77,8 +95,7 @@ export default function DoctorDetail({
             </View>
           </View>
         )}
-
-        <ContactInfoCard />
+        {/* <ContactInfoCard /> */}
       </ScrollView>
     </View>
   );

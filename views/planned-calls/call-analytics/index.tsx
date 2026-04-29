@@ -1,11 +1,10 @@
+import { AppBarChart } from '@/components/ui/AppBarChart';
+import { AppMetricCard } from '@/components/ui/AppMetricCard';
+import { Colors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors } from '@/constants/theme';
-import { AppBarChart } from '@/components/ui/AppBarChart';
-import { HighlightCard } from '@/components/ui/HighlightCard';
-import { AppMetricCard } from '@/components/ui/AppMetricCard';
 import { CallType } from '../callTypes';
 
 interface CallAnalyticsProps {
@@ -16,6 +15,7 @@ interface CallAnalyticsProps {
   totalSlides: number;
   feedback: string;
   slideTimes: number[];
+  returnToNewDoctor?: boolean;
 }
 
 function formatDuration(seconds: number) {
@@ -48,6 +48,7 @@ export default function CallAnalytics({
   totalSlides,
   feedback,
   slideTimes,
+  returnToNewDoctor = false,
 }: CallAnalyticsProps) {
   const safeSlideTimes =
     slideTimes.length > 0 ? slideTimes : Array.from({ length: totalSlides }, () => 0);
@@ -62,6 +63,19 @@ export default function CallAnalytics({
     label: `Slide ${index + 1}`,
     valueLabel: formatSlideTime(seconds),
   }));
+  const handleBackPress = () => {
+    if (callType === 'unplanned' && returnToNewDoctor) {
+      router.replace({
+        pathname: '/(tabs)/unplanned-calls',
+        params: {
+          openNewDoctorForm: '1',
+        },
+      });
+      return;
+    }
+
+    router.replace(callType === 'unplanned' ? '/(tabs)/unplanned-calls' : '/(tabs)/planned-calls');
+  };
 
   return (
     <View style={styles.screen}>
@@ -69,7 +83,7 @@ export default function CallAnalytics({
         <SafeAreaView edges={['top']}>
           <View style={styles.headerTopRow}>
             <Pressable
-              onPress={() => router.replace('/(tabs)' as never)}
+              onPress={handleBackPress}
               style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}
             >
               <Ionicons name="chevron-back" size={20} color={Colors.textOnDark} />
@@ -97,7 +111,7 @@ export default function CallAnalytics({
       >
         <View style={styles.submittedBadge}>
           <Ionicons name="checkmark-circle-outline" size={18} color={Colors.success} />
-          <Text style={styles.submittedText}>Report Submitted</Text>
+          <Text style={styles.submittedText}>Call Completed</Text>
         </View>
 
         <View style={styles.metricGrid}>
@@ -158,14 +172,14 @@ export default function CallAnalytics({
               </View>
             </View>
 
-            <HighlightCard
+            {/* <HighlightCard
               title="Next Steps"
               items={[
                 'Send follow-up clinical study PDF',
                 'Schedule next visit for March 15th',
                 'Drop off samples on Friday',
               ]}
-            />
+            /> */}
           </View>
         </View>
       </ScrollView>

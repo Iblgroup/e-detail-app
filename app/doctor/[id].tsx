@@ -12,11 +12,16 @@ const DOCTORS: Record<string, DoctorDetailData> = {
     hospital: 'City Hospital',
     address: '123 Heart St',
     lastVisit: '2024-02-15',
-    rating: 'A+ Priority',
+    doctorRating: 'A+',
+    pmdcNumber: 'PMDC-10234-K',
+    scheduledTime: '09:00 AM',
     history: [
       { id: 'h1', type: 'E-Detailing', date: 'Feb 15, 2024', duration: '12 mins', outcome: 'Positive' },
       { id: 'h2', type: 'Sample Drop', date: 'Jan 20, 2024', duration: '5 mins', outcome: 'Neutral' },
       { id: 'h3', type: 'E-Detailing', date: 'Dec 12, 2023', duration: '15 mins', outcome: 'Very Positive' },
+    ],
+    plannedCalls: [
+      { id: 'pc-1', title: 'Morning E-Detailing', scheduledTime: '09:00 AM', location: 'City Hospital', status: 'pending' },
     ],
   },
   '2': {
@@ -26,10 +31,15 @@ const DOCTORS: Record<string, DoctorDetailData> = {
     hospital: 'Central Clinic',
     address: '45 Main Blvd',
     lastVisit: '2024-01-20',
-    rating: 'B+ Priority',
+    doctorRating: 'B+',
+    pmdcNumber: 'PMDC-20451-L',
+    scheduledTime: '11:30 AM',
     history: [
       { id: 'h1', type: 'E-Detailing', date: 'Jan 20, 2024', duration: '10 mins', outcome: 'Positive' },
       { id: 'h2', type: 'Sample Drop', date: 'Dec 5, 2023', duration: '8 mins', outcome: 'Very Positive' },
+    ],
+    plannedCalls: [
+      { id: 'pc-3', title: 'General Product Briefing', scheduledTime: '11:30 AM', location: 'Central Clinic', status: 'pending' },
     ],
   },
   '3': {
@@ -39,11 +49,16 @@ const DOCTORS: Record<string, DoctorDetailData> = {
     hospital: 'City Hospital',
     address: '123 Heart St',
     lastVisit: '2024-02-15',
-    rating: 'A+ Priority',
+    doctorRating: 'A+',
+    pmdcNumber: 'PMDC-10234-K',
+    scheduledTime: '03:00 PM',
     history: [
       { id: 'h1', type: 'E-Detailing', date: 'Feb 15, 2024', duration: '12 mins', outcome: 'Positive' },
       { id: 'h2', type: 'Sample Drop', date: 'Jan 20, 2024', duration: '5 mins', outcome: 'Neutral' },
       { id: 'h3', type: 'E-Detailing', date: 'Dec 12, 2023', duration: '15 mins', outcome: 'Very Positive' },
+    ],
+    plannedCalls: [
+      { id: 'pc-4', title: 'Afternoon E-Detailing', scheduledTime: '03:00 PM', location: 'City Hospital', status: 'pending' },
     ],
   },
   '4': {
@@ -53,7 +68,8 @@ const DOCTORS: Record<string, DoctorDetailData> = {
     hospital: 'Skin Care Clinic',
     address: '18 Wellness Road',
     lastVisit: '2024-03-05',
-    rating: 'A Priority',
+    doctorRating: 'A',
+    pmdcNumber: 'PMDC-31567-D',
     history: [
       { id: 'h1', type: 'E-Detailing', date: 'Mar 5, 2024', duration: '9 mins', outcome: 'Positive' },
       { id: 'h2', type: 'Sample Drop', date: 'Feb 11, 2024', duration: '4 mins', outcome: 'Neutral' },
@@ -66,7 +82,8 @@ const DOCTORS: Record<string, DoctorDetailData> = {
     hospital: 'Metro Hospital',
     address: '77 Joint Avenue',
     lastVisit: '2024-02-28',
-    rating: 'B+ Priority',
+    doctorRating: 'B+',
+    pmdcNumber: 'PMDC-42890-O',
     history: [
       { id: 'h1', type: 'E-Detailing', date: 'Feb 28, 2024', duration: '11 mins', outcome: 'Positive' },
       { id: 'h2', type: 'Sample Drop', date: 'Jan 18, 2024', duration: '6 mins', outcome: 'Neutral' },
@@ -79,7 +96,8 @@ const DOCTORS: Record<string, DoctorDetailData> = {
     hospital: 'Care Medical Center',
     address: '9 Breath Lane',
     lastVisit: '2024-03-12',
-    rating: 'A+ Priority',
+    doctorRating: 'A+',
+    pmdcNumber: 'PMDC-53741-P',
     history: [
       { id: 'h1', type: 'E-Detailing', date: 'Mar 12, 2024', duration: '13 mins', outcome: 'Very Positive' },
       { id: 'h2', type: 'Sample Drop', date: 'Feb 3, 2024', duration: '5 mins', outcome: 'Positive' },
@@ -92,7 +110,8 @@ const DOCTORS: Record<string, DoctorDetailData> = {
     hospital: 'North Medical Complex',
     address: '24 North Avenue',
     lastVisit: '2024-03-18',
-    rating: 'B Priority',
+    doctorRating: 'B',
+    pmdcNumber: 'PMDC-64125-E',
     history: [
       { id: 'h1', type: 'E-Detailing', date: 'Mar 18, 2024', duration: '8 mins', outcome: 'Positive' },
       { id: 'h2', type: 'Sample Drop', date: 'Feb 14, 2024', duration: '4 mins', outcome: 'Neutral' },
@@ -105,7 +124,8 @@ const DOCTORS: Record<string, DoctorDetailData> = {
     hospital: 'Women Care Hospital',
     address: '12 Care Street',
     lastVisit: '2024-03-22',
-    rating: 'A Priority',
+    doctorRating: 'A',
+    pmdcNumber: 'PMDC-75218-G',
     history: [
       { id: 'h1', type: 'E-Detailing', date: 'Mar 22, 2024', duration: '10 mins', outcome: 'Very Positive' },
       { id: 'h2', type: 'Sample Drop', date: 'Feb 20, 2024', duration: '5 mins', outcome: 'Positive' },
@@ -118,7 +138,8 @@ const DOCTORS: Record<string, DoctorDetailData> = {
     hospital: 'Neuro Health Center',
     address: '5 Neuro Park',
     lastVisit: '2024-02-19',
-    rating: 'A+ Priority',
+    doctorRating: 'A+',
+    pmdcNumber: 'PMDC-86309-N',
     history: [
       { id: 'h1', type: 'E-Detailing', date: 'Feb 19, 2024', duration: '14 mins', outcome: 'Positive' },
       { id: 'h2', type: 'Sample Drop', date: 'Jan 27, 2024', duration: '6 mins', outcome: 'Neutral' },
@@ -131,7 +152,8 @@ const DOCTORS: Record<string, DoctorDetailData> = {
     hospital: 'Life Clinic',
     address: '63 Life Boulevard',
     lastVisit: '2024-01-30',
-    rating: 'B+ Priority',
+    doctorRating: 'B+',
+    pmdcNumber: 'PMDC-97452-Z',
     history: [
       { id: 'h1', type: 'E-Detailing', date: 'Jan 30, 2024', duration: '9 mins', outcome: 'Positive' },
       { id: 'h2', type: 'Sample Drop', date: 'Jan 2, 2024', duration: '4 mins', outcome: 'Neutral' },
@@ -140,7 +162,7 @@ const DOCTORS: Record<string, DoctorDetailData> = {
 };
 
 export default function DoctorDetailScreen() {
-  const { id, completed, callType, name, specialty, hospital, address, lastVisit } = useLocalSearchParams<{
+  const { id, completed, callType, name, specialty, hospital, address, lastVisit, scheduledTime } = useLocalSearchParams<{
     id: string;
     completed?: string;
     callType?: CallType;
@@ -149,6 +171,7 @@ export default function DoctorDetailScreen() {
     hospital?: string;
     address?: string;
     lastVisit?: string;
+    scheduledTime?: string;
   }>();
   const doctorId = Array.isArray(id) ? id[0] : id;
   const normalizedCallType: CallType = callType === 'unplanned' ? 'unplanned' : 'planned';
@@ -162,8 +185,19 @@ export default function DoctorDetailScreen() {
           hospital: getParam(hospital) ?? 'Clinic',
           address: getParam(address) ?? 'Address not added',
           lastVisit: getParam(lastVisit) ?? 'New doctor',
-          rating: 'New Contact',
+          doctorRating: 'New',
+          pmdcNumber: 'PMDC Pending',
+          scheduledTime: getParam(scheduledTime) ?? 'Time TBD',
           history: [],
+          plannedCalls: [
+            {
+              id: `${doctorId}-planned-call`,
+              title: 'Scheduled Call',
+              scheduledTime: getParam(scheduledTime) ?? 'Time TBD',
+              location: getParam(hospital) ?? 'Clinic',
+              status: completed === '1' ? 'completed' : 'pending',
+            },
+          ],
         }
       : undefined
   );

@@ -24,14 +24,18 @@ interface ProfessionalDetailsCardProps {
   hospital: string;
   address: string;
   lastVisit: string;
-  rating: string;
+  doctorRating: string;
+  pmdcNumber: string;
+  scheduledTime?: string;
 }
 
 export function ProfessionalDetailsCard({
   hospital,
   address,
   lastVisit,
-  rating,
+  doctorRating,
+  pmdcNumber,
+  scheduledTime,
 }: ProfessionalDetailsCardProps) {
   return (
     <View style={styles.card}>
@@ -39,8 +43,12 @@ export function ProfessionalDetailsCard({
       <View style={styles.grid}>
         <DetailField iconName="location-outline" label="HOSPITAL" value={hospital} />
         <DetailField iconName="location-outline" label="ADDRESS" value={address} />
+        {scheduledTime ? (
+          <DetailField iconName="alarm-outline" label="CALL TIME" value={scheduledTime} />
+        ) : null}
         <DetailField iconName="time-outline" label="LAST VISIT" value={lastVisit} />
-        <DetailField iconName="star-outline" label="RATING" value={rating} />
+        <DetailField iconName="ribbon-outline" label="DOCTOR RATING" value={doctorRating} />
+        <DetailField iconName="card-outline" label="PMDC NUMBER" value={pmdcNumber} />
       </View>
     </View>
   );

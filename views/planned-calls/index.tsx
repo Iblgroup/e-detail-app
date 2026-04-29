@@ -13,6 +13,7 @@ const todayDoctors: Doctor[] = [
     specialty: 'Cardiologist',
     hospital: 'City Hospital',
     lastVisit: '2024-02-15',
+    scheduledTime: '09:00 AM',
   },
   {
     id: '2',
@@ -20,6 +21,7 @@ const todayDoctors: Doctor[] = [
     specialty: 'General Physician',
     hospital: 'Central Clinic',
     lastVisit: '2024-01-20',
+    scheduledTime: '11:30 AM',
   },
   {
     id: '3',
@@ -27,7 +29,7 @@ const todayDoctors: Doctor[] = [
     specialty: 'Cardiologist',
     hospital: 'City Hospital',
     lastVisit: '2024-02-15',
-    status: 'completed',
+    scheduledTime: '03:00 PM',
   },
 ];
 

@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { CallType } from './callTypes';
+import { CompletedCallReport, getCompletedCallReport } from './callCompletionStore';
 
 export interface Doctor {
   id: string;
@@ -11,20 +12,52 @@ export interface Doctor {
   hospital: string;
   address?: string;
   lastVisit: string;
+  scheduledTime?: string;
   status?: 'pending' | 'completed';
+  isNewDoctorPending?: boolean;
 }
 
 interface DoctorCardProps {
   doctor: Doctor;
   callType?: CallType;
-  onPress?: () => void;
+  onPress?: (doctor: Doctor) => boolean | void;
 }
 
 export function DoctorCard({ doctor, callType = 'planned', onPress }: DoctorCardProps) {
   const isCompleted = doctor.status === 'completed';
 
+  const getFallbackCompletedReport = (): CompletedCallReport => ({
+    doctorName: doctor.name,
+    durationSeconds: 62,
+    slidesViewed: 3,
+    totalSlides: 3,
+    feedback: 'Doctor responded positively and requested a follow-up discussion.',
+    slideTimes: [53, 8, 1],
+  });
+
   const handlePress = () => {
-    onPress?.();
+    const handled = onPress?.(doctor);
+    if (handled) return;
+
+    if (isCompleted) {
+      const report = getCompletedCallReport(doctor.id, callType) ?? getFallbackCompletedReport();
+
+      router.push({
+        pathname: '/call-analytics/[id]',
+        params: {
+          id: doctor.id,
+          callType,
+          doctorName: report.doctorName ?? doctor.name,
+          duration: String(report.durationSeconds),
+          slidesViewed: String(report.slidesViewed),
+          totalSlides: String(report.totalSlides),
+          feedback: report.feedback,
+          slideTimes: report.slideTimes.join(','),
+        },
+      });
+      return;
+    }
+
     router.push({
       pathname: '/doctor/[id]',
       params: {
@@ -36,6 +69,7 @@ export function DoctorCard({ doctor, callType = 'planned', onPress }: DoctorCard
         hospital: doctor.hospital,
         address: doctor.address,
         lastVisit: doctor.lastVisit,
+        scheduledTime: doctor.scheduledTime,
       },
     });
   };
@@ -58,7 +92,24 @@ export function DoctorCard({ doctor, callType = 'planned', onPress }: DoctorCard
       </View>
 
       <View style={styles.info}>
-        <Text style={styles.name}>{doctor.name}</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.name}>{doctor.name}</Text>
+          {doctor.isNewDoctorPending || doctor.scheduledTime ? (
+            <View style={styles.titleBadges}>
+              {doctor.isNewDoctorPending ? (
+                <View style={styles.newDoctorPill}>
+                  <Text style={styles.newDoctorPillText}>New Doctor</Text>
+                </View>
+              ) : null}
+              {doctor.scheduledTime ? (
+                <View style={styles.timePill}>
+                  <Ionicons name="alarm-outline" size={11} color={Colors.primary} />
+                  <Text style={styles.timePillText}>{doctor.scheduledTime}</Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
         <Text style={styles.specialty}>{doctor.specialty}</Text>
         <View style={styles.metaRow}>
           <View style={styles.metaItem}>
@@ -123,10 +174,48 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 3,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  titleBadges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    gap: 6,
+  },
   name: {
     fontSize: 15,
     fontWeight: '700',
     color: Colors.text,
+    flex: 1,
+  },
+  newDoctorPill: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    backgroundColor: '#FEF3C7',
+  },
+  newDoctorPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B45309',
+  },
+  timePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    backgroundColor: Colors.primaryLight,
+  },
+  timePillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.primary,
   },
   specialty: {
     fontSize: 13,
@@ -135,6 +224,7 @@ const styles = StyleSheet.create({
   },
   metaRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
     marginTop: 4,
   },

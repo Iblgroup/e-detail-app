@@ -9,7 +9,6 @@ interface SlideViewerProps {
   onElapsedChange?: (seconds: number) => void;
   onSlideTimesChange?: (seconds: number[]) => void;
   onSlidesViewedChange?: (slidesViewed: number, canEndCall: boolean) => void;
-  onComplete?: () => void;
 }
 
 function normalizeDuration(seconds: number) {
@@ -37,7 +36,6 @@ export function SlideViewer({
   onElapsedChange,
   onSlideTimesChange,
   onSlidesViewedChange,
-  onComplete,
 }: SlideViewerProps) {
   const [current, setCurrent] = useState(0);
   const [slideElapsed, setSlideElapsed] = useState(0);
@@ -49,9 +47,6 @@ export function SlideViewer({
   );
   const currentDuration = durations[current] ?? 1;
   const slidesKey = useMemo(() => slides.map((slide) => slide.id).join('|'), [slides]);
-  const currentCommittedSeconds = spentSeconds[current] ?? 0;
-  const currentTotalSeconds = currentCommittedSeconds + slideElapsed;
-  const currentCompletedBeforeVisit = currentCommittedSeconds >= currentDuration;
 
   const slideTimes = useMemo(
     () =>
@@ -72,8 +67,8 @@ export function SlideViewer({
     () => slideTimes.map((seconds, index) => Math.min(seconds, durations[index] ?? 1)),
     [durations, slideTimes]
   );
-  const remainingSeconds = Math.max(0, currentDuration - (progressSeconds[current] ?? 0));
   const completedSeconds = Math.min(progressSeconds[current] ?? 0, currentDuration);
+  const currentSlideSpentSeconds = slideTimes[current] ?? 0;
   const completedSlides = useMemo(
     () =>
       progressSeconds.filter((seconds, index) => seconds >= (durations[index] ?? 1)).length,
@@ -122,42 +117,6 @@ export function SlideViewer({
     return () => clearInterval(interval);
   }, [current, isPaused, slides.length]);
 
-  useEffect(() => {
-    if (
-      slides.length === 0 ||
-      currentCompletedBeforeVisit ||
-      currentTotalSeconds < currentDuration
-    ) {
-      return;
-    }
-
-    const nextSpentSeconds = addSlideTime(spentSeconds, current, slideElapsed);
-    setSpentSeconds(nextSpentSeconds);
-
-    if (current < slides.length - 1) {
-      const nextIndex = current + 1;
-      setCurrent(nextIndex);
-      setSlideElapsed(0);
-    } else if (
-      nextSpentSeconds.every(
-        (seconds, index) => Math.min(seconds, durations[index] ?? 1) >= (durations[index] ?? 1)
-      )
-    ) {
-      setSlideElapsed(0);
-      onComplete?.();
-    }
-  }, [
-    current,
-    currentCompletedBeforeVisit,
-    currentDuration,
-    currentTotalSeconds,
-    durations,
-    onComplete,
-    slideElapsed,
-    slides.length,
-    spentSeconds,
-  ]);
-
   const goToSlide = useCallback(
     (target: number) => {
       if (target < 0 || target >= slides.length || target === current) return;
@@ -194,7 +153,7 @@ export function SlideViewer({
       <View style={styles.slideTimer}>
         <View style={styles.slideTimerHeader}>
           <Text style={styles.slideTimerLabel}>Slide {current + 1}/{slides.length}</Text>
-          <Text style={styles.slideTimerValue}>{formatTime(remainingSeconds)} left</Text>
+          <Text style={styles.slideTimerValue}>{formatTime(currentSlideSpentSeconds)} spent</Text>
         </View>
         <View style={styles.slideTimerTrack}>
           <View style={[styles.slideTimerFill, { flex: completedSeconds }]} />
