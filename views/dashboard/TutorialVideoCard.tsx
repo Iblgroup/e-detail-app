@@ -1,6 +1,6 @@
 import { Colors } from '@/constants/theme';
 import { VideoView, useVideoPlayer } from 'expo-video';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 
 const TUTORIAL_VIDEO_URL =
   'https://file-examples.com/storage/fe5add0b7e69f1a4793292f/2017/04/file_example_MP4_480_1_5MG.mp4';
@@ -12,6 +12,11 @@ export function TutorialVideoCard() {
 
   return (
     <View style={styles.videoCard}>
+      <View style={styles.header}>
+        <Text style={styles.title}>E-Detailing App Tutorial</Text>
+        <Text style={styles.subtitle}>Quick walkthrough for calls, reporting, and doctor visits</Text>
+      </View>
+
       {Platform.OS === 'web' ? (
         <video
           controls
@@ -38,6 +43,22 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     boxShadow: '0px 1px 4px rgba(43, 115, 184, 0.08)',
     elevation: 2,
+  },
+  header: {
+    paddingHorizontal: 8,
+    paddingTop: 6,
+    paddingBottom: 10,
+    gap: 2,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: Colors.text,
+  },
+  subtitle: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: Colors.textMuted,
   },
   videoPlayer: {
     width: '100%',

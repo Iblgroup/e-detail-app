@@ -1,6 +1,6 @@
+import { Colors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
-import { Colors } from '@/constants/theme';
 
 type MetricTone = 'positive' | 'negative';
 
@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: Colors.surface,
     padding: 16,
-    minHeight: 104,
+    minHeight: 80,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
@@ -62,12 +62,12 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   topRow: {
-    minHeight: 32,
+    minHeight: 20,
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: 10,
-    marginBottom: 10,
+    marginBottom: 6,
   },
   iconBox: {
     width: 42,
@@ -78,14 +78,14 @@ const styles = StyleSheet.create({
   },
   label: {
     color: '#94A3B8',
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: '600',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
   value: {
     color: '#0F172A',
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '800',
   },
   pill: {
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.dangerBg,
   },
   pillText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
   },
   pillTextPositive: {

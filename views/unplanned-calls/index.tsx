@@ -4,9 +4,9 @@ import { Colors } from '@/constants/theme';
 import { Doctor, DoctorCard } from '@/views/planned-calls/DoctorCard';
 import { ScheduleSectionHeader } from '@/views/planned-calls/ScheduleSectionHeader';
 import { getCompletedCallIds } from '@/views/planned-calls/callCompletionStore';
-import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   addButtonText: {
-    fontSize: 12,
+    fontSize: 13,
   },
   modalBackdrop: {
     flex: 1,
@@ -488,7 +488,7 @@ const styles = StyleSheet.create({
   },
   modalSubtitle: {
     color: Colors.textMuted,
-    fontSize: 13,
+    fontSize: 14,
     lineHeight: 18,
   },
   modeRow: {
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
   },
   modeText: {
     color: Colors.textMuted,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
   },
   modeTextActive: {
@@ -564,12 +564,12 @@ const styles = StyleSheet.create({
   },
   optionMeta: {
     color: Colors.textMuted,
-    fontSize: 12,
+    fontSize: 13,
     marginTop: 3,
   },
   emptyText: {
     color: Colors.textMuted,
-    fontSize: 13,
+    fontSize: 14,
     padding: 12,
     textAlign: 'center',
   },
@@ -621,7 +621,7 @@ const styles = StyleSheet.create({
   },
   callPromptText: {
     color: Colors.textMuted,
-    fontSize: 13,
+    fontSize: 14,
     lineHeight: 19,
     textAlign: 'center',
   },

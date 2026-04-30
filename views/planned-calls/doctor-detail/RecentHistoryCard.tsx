@@ -1,6 +1,6 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 export interface HistoryItem {
   id: string;
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   viewAll: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: Colors.primary,
   },
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   date: {
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.textMuted,
   },
   right: {
@@ -123,12 +123,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   duration: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: Colors.text,
   },
   outcome: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
   },
   divider: {

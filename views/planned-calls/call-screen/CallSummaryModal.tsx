@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     color: '#94A0B2',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
     letterSpacing: 1.2,
     textTransform: 'uppercase',
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     color: '#44536A',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
     marginBottom: 7,
   },
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
   },
   optionText: {
     color: '#5B6A7F',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
   },
   optionTextActive: {

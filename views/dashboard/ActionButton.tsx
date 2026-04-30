@@ -1,5 +1,5 @@
-import { Pressable, Text, StyleSheet, ViewStyle } from 'react-native';
 import { Colors } from '@/constants/theme';
+import { Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
 
 interface ActionButtonProps {
   label: string;
@@ -36,7 +36,7 @@ const styles = StyleSheet.create({
     opacity: 0.75,
   },
   label: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
     color: Colors.text,
     textAlign: 'center',

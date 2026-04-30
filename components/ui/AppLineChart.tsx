@@ -1,6 +1,6 @@
+import { Colors } from '@/constants/theme';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Line, Polygon, Polyline } from 'react-native-svg';
-import { Colors } from '@/constants/theme';
 
 export interface LineChartDataPoint {
   label: string;
@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
   },
   axisLabel: {
     color: '#94A3B8',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     textAlign: 'right',
   },
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   },
   label: {
     color: Colors.textMuted,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
 });

@@ -1,9 +1,9 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { Colors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Colors } from '@/constants/theme';
-import { CallType } from './callTypes';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CompletedCallReport, getCompletedCallReport } from './callCompletionStore';
+import { CallType } from './callTypes';
 
 export interface Doctor {
   id: string;
@@ -111,7 +111,7 @@ export function DoctorCard({ doctor, callType = 'planned', onPress }: DoctorCard
           ) : null}
         </View>
         <Text style={styles.specialty}>{doctor.specialty}</Text>
-        <View style={styles.metaRow}>
+        <View style={[styles.metaRow, isCompleted && styles.metaRowCompleted]}>
           <View style={styles.metaItem}>
             <Ionicons name="location-outline" size={12} color={Colors.textMuted} />
             <Text style={styles.metaText}>{doctor.hospital}</Text>
@@ -125,7 +125,7 @@ export function DoctorCard({ doctor, callType = 'planned', onPress }: DoctorCard
 
       {isCompleted ? (
         <View style={styles.completedBadge}>
-          <Ionicons name="checkmark-circle-outline" size={15} color={Colors.success} />
+          <Ionicons name="checkmark-circle-outline" size={14} color={Colors.success} />
           <Text style={styles.completedText}>Completed</Text>
         </View>
       ) : (
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF3C7',
   },
   newDoctorPillText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: '#B45309',
   },
@@ -209,16 +209,16 @@ const styles = StyleSheet.create({
     gap: 4,
     borderRadius: 999,
     paddingHorizontal: 8,
-    paddingVertical: 5,
+    paddingVertical: 4,
     backgroundColor: Colors.primaryLight,
   },
   timePillText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: Colors.primary,
   },
   specialty: {
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.primary,
     fontWeight: '500',
   },
@@ -228,13 +228,16 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 4,
   },
+  metaRowCompleted: {
+    flexWrap: 'nowrap',
+  },
   metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
   },
   metaText: {
-    fontSize: 11,
+    fontSize: 12,
     color: Colors.textMuted,
   },
   chevron: {
@@ -249,15 +252,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    gap: 5,
+    gap: 4,
     borderRadius: 10,
     backgroundColor: Colors.successBg,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   completedText: {
     color: Colors.success,
-    fontSize: 13,
-    fontWeight: '800',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

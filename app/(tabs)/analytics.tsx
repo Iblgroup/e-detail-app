@@ -1,12 +1,12 @@
-import { useState } from 'react';
-import { Ionicons } from '@expo/vector-icons';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppBarChart, BarChartDataPoint } from '@/components/ui/AppBarChart';
 import { AppButton } from '@/components/ui/AppButton';
 import { AppLineChart, LineChartDataPoint } from '@/components/ui/AppLineChart';
 import { AppMetricCard } from '@/components/ui/AppMetricCard';
 import { ScreenLayout } from '@/components/ui/ScreenLayout';
 import { Colors } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 const metrics = [
   { label: 'Total Calls', value: '284', change: '+12', tone: 'positive' },
@@ -118,12 +118,13 @@ export default function AnalyticsScreen() {
       </View>
 
       <View style={styles.rfiCard}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="swap-horizontal-outline" size={18} color={Colors.primary} />
-          <Text style={styles.sectionTitle}>RFI</Text>
+        <View style={styles.rfiHeader}>
+          <View style={styles.rfiTitleRow}>
+            <Ionicons name="swap-horizontal-outline" size={18} color={Colors.primary} />
+            <Text style={styles.sectionTitle}>RFI</Text>
+            <Text style={styles.rfiSubtitle}>(Plan / Completed)</Text>
+          </View>
         </View>
-        <Text style={styles.rfiSubtitle}>Plan vs Completed</Text>
-
         <View style={styles.rfiStatsRow}>
           <View style={styles.rfiStatBox}>
             <Text style={styles.rfiStatLabel}>Planned</Text>
@@ -271,6 +272,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  rfiHeader: {
+    gap: 6,
+  },
   chartCard: {
     borderRadius: 18,
     backgroundColor: Colors.surface,
@@ -292,11 +296,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '900',
   },
+  rfiTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   rfiSubtitle: {
     color: Colors.textMuted,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-    marginTop: -8,
   },
   rfiStatsRow: {
     flexDirection: 'row',
@@ -312,7 +320,7 @@ const styles = StyleSheet.create({
   },
   rfiStatLabel: {
     color: Colors.textMuted,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
@@ -332,12 +340,12 @@ const styles = StyleSheet.create({
   },
   rfiProgressLabel: {
     color: Colors.text,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
   },
   rfiProgressValue: {
     color: Colors.primary,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
   },
   rfiTrack: {
@@ -365,14 +373,14 @@ const styles = StyleSheet.create({
   },
   rfiFooterPillText: {
     color: Colors.primary,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
   },
   rfiFooterText: {
     flex: 1,
     textAlign: 'right',
     color: Colors.textMuted,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
   },
   lineChartWrapper: {

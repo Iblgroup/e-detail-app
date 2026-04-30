@@ -1,6 +1,6 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 interface AppHeaderProps {
   /** Screen title (e.g. "Planned Calls"). When provided, shown instead of greeting. */
@@ -84,11 +84,11 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   date: {
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.textMuted,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.textMuted,
     fontWeight: '600',
   },
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     color: Colors.textOnDark,
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '700',
   },
 });

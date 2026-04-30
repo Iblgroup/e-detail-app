@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
   },
   segmentButtonText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
     color: Colors.textMuted,
   },
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
     lineHeight: 32,
   },
   totalLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     color: Colors.textMuted,
     letterSpacing: 0.5,
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.dangerBg,
   },
   badgeText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
   },
   badgeTextGreen: {

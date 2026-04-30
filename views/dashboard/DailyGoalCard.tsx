@@ -1,7 +1,7 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { Colors } from '@/constants/theme';
-import { ProgressBar } from './ProgressBar';
 import { HighlightCard } from '@/components/ui/HighlightCard';
+import { Colors } from '@/constants/theme';
+import { StyleSheet, Text, View } from 'react-native';
+import { ProgressBar } from './ProgressBar';
 
 interface DailyGoalCardProps {
   completed?: number;
@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   progressLabel: {
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.textMuted,
     fontWeight: '500',
   },

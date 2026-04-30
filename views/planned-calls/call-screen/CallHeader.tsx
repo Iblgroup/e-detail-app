@@ -1,7 +1,7 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface CallHeaderProps {
   elapsedSeconds?: number;
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   liveText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: 0.5,
@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   timer: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.7)',
   },
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   endCallText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
   },

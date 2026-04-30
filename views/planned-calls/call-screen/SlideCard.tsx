@@ -1,5 +1,5 @@
-import { View, Text, StyleSheet, Image, ImageSourcePropType } from 'react-native';
 import { Colors } from '@/constants/theme';
+import { Image, ImageSourcePropType, StyleSheet, Text, View } from 'react-native';
 
 export interface Slide {
   id: string;
@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   brand: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: Colors.primary,
     letterSpacing: 1,

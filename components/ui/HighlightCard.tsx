@@ -1,5 +1,5 @@
-import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Colors } from '@/constants/theme';
+import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { AppButton } from './AppButton';
 
 type HighlightCardVariant = 'light' | 'dark';
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
     color: Colors.textOnDark,
   },
   text: {
-    fontSize: 13,
+    fontSize: 14,
     lineHeight: 20,
   },
   textLight: {

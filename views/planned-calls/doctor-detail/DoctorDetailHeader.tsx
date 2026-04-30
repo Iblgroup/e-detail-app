@@ -1,8 +1,8 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Colors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Colors } from '@/constants/theme';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface DoctorDetailHeaderProps {
   name: string;
@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.25)',
   },
   specialty: {
-    fontSize: 13,
+    fontSize: 14,
     color: 'rgba(255,255,255,0.5)',
     fontWeight: '500',
   },

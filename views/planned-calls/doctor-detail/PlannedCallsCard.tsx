@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { StyleSheet, Text, View } from 'react-native';
 
 export interface PlannedCallItem {
   id: string;
@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   count: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: Colors.primary,
   },
@@ -106,11 +106,11 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   locationText: {
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.textMuted,
   },
   timeText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     color: Colors.primary,
   },
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.border,
   },
   emptyState: {
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.textMuted,
   },
 });

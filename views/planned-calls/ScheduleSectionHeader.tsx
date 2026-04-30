@@ -1,5 +1,5 @@
-import { View, Text, StyleSheet } from 'react-native';
 import { Colors } from '@/constants/theme';
+import { StyleSheet, Text, View } from 'react-native';
 
 interface ScheduleSectionHeaderProps {
   title: string;
@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   badgeText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: Colors.primary,
   },

@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     color: 'rgba(255,255,255,0.68)',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     lineHeight: 18,
   },
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
   },
   submittedText: {
     color: Colors.success,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 1.2,
@@ -326,12 +326,12 @@ const styles = StyleSheet.create({
   },
   slideTimeLabel: {
     color: Colors.text,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   slideTimeValue: {
     color: Colors.primary,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
   },
   feedbackBox: {

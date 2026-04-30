@@ -1,5 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
 import { Colors } from '@/constants/theme';
+import { StyleSheet, Text, View } from 'react-native';
 
 export interface BarChartDataPoint {
   label: string;
@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
   },
   axisLabel: {
     color: '#94A3B8',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     textAlign: 'right',
   },
@@ -166,12 +166,12 @@ const styles = StyleSheet.create({
   },
   valueLabel: {
     color: Colors.text,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
   label: {
     color: Colors.textMuted,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
   },
 });

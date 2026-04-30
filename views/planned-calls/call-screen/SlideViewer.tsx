@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SlideCard, Slide } from './SlideCard';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Slide, SlideCard } from './SlideCard';
 
 interface SlideViewerProps {
   slides: Slide[];
@@ -209,12 +209,12 @@ const styles = StyleSheet.create({
   },
   slideTimerLabel: {
     color: 'rgba(255,255,255,0.68)',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
   },
   slideTimerValue: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
   },
   slideTimerTrack: {

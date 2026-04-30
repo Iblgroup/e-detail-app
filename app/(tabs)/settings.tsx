@@ -1,9 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
-import { StyleSheet, Switch, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { AppButton } from '@/components/ui/AppButton';
 import { ScreenLayout } from '@/components/ui/ScreenLayout';
 import { Colors } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
+import { StyleSheet, Switch, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
 interface SettingsCardProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     color: '#334155',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
   },
   inputWrap: {
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
   },
   accountSubtitle: {
     color: Colors.text,
-    fontSize: 12,
+    fontSize: 13,
     marginTop: 5,
     marginBottom: 16,
   },
@@ -282,11 +282,11 @@ const styles = StyleSheet.create({
   },
   accountLabel: {
     color: Colors.textMuted,
-    fontSize: 12,
+    fontSize: 13,
   },
   accountValue: {
     color: Colors.secondary,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
   },
 });
