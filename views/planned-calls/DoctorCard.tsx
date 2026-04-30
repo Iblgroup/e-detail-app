@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     gap: 4,
     borderRadius: 999,
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 2,
     backgroundColor: Colors.primaryLight,
   },
   timePillText: {
