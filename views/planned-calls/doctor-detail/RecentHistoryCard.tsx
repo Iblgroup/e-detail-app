@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   date: {
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.textMuted,
   },
   right: {
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   outcome: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   divider: {

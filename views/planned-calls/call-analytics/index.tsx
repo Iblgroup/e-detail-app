@@ -1,12 +1,12 @@
 import { AppBarChart } from '@/components/ui/AppBarChart';
 import { AppMetricCard } from '@/components/ui/AppMetricCard';
 import { Colors } from '@/constants/theme';
+import { queueReturnToNewDoctor } from '@/views/unplanned-calls/returnToNewDoctorStore';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CallType } from '../callTypes';
-import { queueReturnToNewDoctor } from '@/views/unplanned-calls/returnToNewDoctorStore';
 
 interface CallAnalyticsProps {
   doctorName?: string;
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
   },
   submittedText: {
     color: Colors.success,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 1.2,

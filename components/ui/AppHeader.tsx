@@ -37,7 +37,7 @@ export function AppHeader({
           <Text style={styles.subtitle}>{subtitle}</Text>
         ) : (
           <View style={styles.dateRow}>
-            <Ionicons name="calendar-outline" size={13} color={Colors.primary} />
+            <Ionicons name="calendar-outline" size={20} color={Colors.primary} />
             <Text style={styles.date}>{formattedDate}</Text>
           </View>
         )}
@@ -45,7 +45,7 @@ export function AppHeader({
 
       <View style={styles.right}>
         <Pressable style={styles.bellWrapper} onPress={onNotification}>
-          <Ionicons name="notifications-outline" size={21} color={Colors.secondary} />
+          <Ionicons name="notifications-outline" size={20} color={Colors.secondary} />
           {notificationCount > 0 && (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{notificationCount}</Text>
@@ -81,10 +81,10 @@ const styles = StyleSheet.create({
   dateRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
   date: {
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.textMuted,
   },
   subtitle: {
@@ -99,25 +99,32 @@ const styles = StyleSheet.create({
   },
   bellWrapper: {
     position: 'relative',
-    padding: 6,
+    width: 40,
+    height: 40,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   badge: {
     position: 'absolute',
-    top: 2,
-    right: 2,
+    top: 1,
+    right: 1,
     backgroundColor: Colors.danger,
-    borderRadius: 6,
-    minWidth: 12,
-    height: 12,
+    borderRadius: 9,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 3,
     alignItems: 'center',
     justifyContent: 'center',
   },
   badgeText: {
     color: Colors.textOnDark,
-    fontSize: 10,
+    fontSize: 12,
+    lineHeight: 12,
     fontWeight: '700',
+    textAlign: 'center',
+    includeFontPadding: false,
   },
 });

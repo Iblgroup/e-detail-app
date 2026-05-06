@@ -1,6 +1,6 @@
 import { AppBarChart, BarChartDataPoint } from '@/components/ui/AppBarChart';
-import { AppButton } from '@/components/ui/AppButton';
 import { AppBottomSheetSelect } from '@/components/ui/AppBottomSheetSelect';
+import { AppButton } from '@/components/ui/AppButton';
 import { AppLineChart, LineChartDataPoint } from '@/components/ui/AppLineChart';
 import { AppMetricCard } from '@/components/ui/AppMetricCard';
 import { ScreenLayout } from '@/components/ui/ScreenLayout';
@@ -73,7 +73,7 @@ export default function AnalyticsScreen() {
             label="Export PDF"
             style={styles.exportButton}
             textStyle={styles.exportButtonText}
-            icon={<Ionicons name="download-outline" size={16} color={Colors.textOnDark} />}
+            icon={<Ionicons name="download-outline" size={20} color={Colors.textOnDark} />}
           />
         </View>
       </View>
@@ -93,7 +93,7 @@ export default function AnalyticsScreen() {
       <View style={styles.rfiCard}>
         <View style={styles.rfiHeader}>
           <View style={styles.rfiTitleRow}>
-            <Ionicons name="swap-horizontal-outline" size={18} color={Colors.primary} />
+            <Ionicons name="swap-horizontal-outline" size={20} color={Colors.primary} />
             <Text style={styles.sectionTitle}>RFI</Text>
             <Text style={styles.rfiSubtitle}>(Plan / Completed)</Text>
           </View>
@@ -132,7 +132,7 @@ export default function AnalyticsScreen() {
       <View style={styles.chartsGrid}>
         <View style={styles.chartCard}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="trending-up-outline" size={18} color={Colors.primary} />
+            <Ionicons name="trending-up-outline" size={20} color={Colors.primary} />
             <Text style={styles.sectionTitle}>Call Volume vs Goal</Text>
           </View>
           <View style={styles.lineChartWrapper}>
@@ -142,7 +142,7 @@ export default function AnalyticsScreen() {
 
         <View style={styles.chartCard}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="people-outline" size={18} color={Colors.primary} />
+            <Ionicons name="people-outline" size={20} color={Colors.primary} />
             <Text style={styles.sectionTitle}>Specialty Distribution</Text>
           </View>
           <View style={styles.barChartWrapper}>
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
   },
   rfiStatLabel: {
     color: Colors.textMuted,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
@@ -323,14 +323,14 @@ const styles = StyleSheet.create({
   },
   rfiFooterPillText: {
     color: Colors.primary,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
   },
   rfiFooterText: {
     flex: 1,
     textAlign: 'right',
     color: Colors.textMuted,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   lineChartWrapper: {

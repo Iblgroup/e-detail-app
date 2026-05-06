@@ -209,12 +209,12 @@ const styles = StyleSheet.create({
   },
   slideTimerLabel: {
     color: 'rgba(255,255,255,0.68)',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
   },
   slideTimerValue: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
   },
   slideTimerTrack: {

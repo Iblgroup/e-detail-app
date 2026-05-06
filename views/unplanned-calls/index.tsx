@@ -261,7 +261,7 @@ export default function UnplannedCalls() {
             <AppButton
               label="Add Doctor"
               onPress={openPicker}
-              icon={<Ionicons name="add" size={16} color={Colors.textOnDark} />}
+              icon={<Ionicons name="add" size={20} color={Colors.textOnDark} />}
               style={styles.addButton}
               textStyle={styles.addButtonText}
             />
@@ -331,7 +331,7 @@ export default function UnplannedCalls() {
                   <Text style={styles.dropdownLabel}>
                     {selectedDoctor?.name ?? 'No doctors available'}
                   </Text>
-                  <Ionicons name="chevron-down" size={18} color={Colors.textMuted} />
+                  <Ionicons name="chevron-down" size={20} color={Colors.textMuted} />
                 </View>
 
                 <ScrollView
@@ -432,8 +432,8 @@ export default function UnplannedCalls() {
                 }
                 icon={
                   pickerMode === 'new' && !newDoctorCallCompleted
-                    ? <Ionicons name="call-outline" size={16} color={Colors.textOnDark} />
-                    : <Ionicons name="add" size={16} color={Colors.textOnDark} />
+                    ? <Ionicons name="call-outline" size={20} color={Colors.textOnDark} />
+                    : <Ionicons name="add" size={20} color={Colors.textOnDark} />
                 }
                 style={[
                   styles.modalButton,
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   addButtonText: {
-    fontSize: 13,
+    fontSize: 14,
   },
   modalBackdrop: {
     flex: 1,
@@ -564,7 +564,7 @@ const styles = StyleSheet.create({
   },
   optionMeta: {
     color: Colors.textMuted,
-    fontSize: 13,
+    fontSize: 14,
     marginTop: 3,
   },
   emptyText: {

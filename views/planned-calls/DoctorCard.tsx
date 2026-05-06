@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   name: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     color: Colors.text,
     flex: 1,
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF3C7',
   },
   newDoctorPillText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: '#B45309',
   },
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryLight,
   },
   timePillText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: Colors.primary,
   },
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   metaText: {
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.textMuted,
   },
   chevron: {
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   },
   completedText: {
     color: Colors.success,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
   },
 });

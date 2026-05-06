@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   locationText: {
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.textMuted,
   },
   timeText: {

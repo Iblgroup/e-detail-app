@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet } from 'react-native';
 import { Colors } from '@/constants/theme';
-import { ReminderItem, Reminder } from './ReminderItem';
+import { StyleSheet, Text, View } from 'react-native';
+import { Reminder, ReminderItem } from './ReminderItem';
 
 interface NoteRemindersCardProps {
   reminders?: Reminder[];
@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   title: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     color: Colors.text,
   },

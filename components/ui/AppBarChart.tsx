@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
   },
   axisLabel: {
     color: '#94A3B8',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
     textAlign: 'right',
   },
@@ -166,12 +166,12 @@ const styles = StyleSheet.create({
   },
   valueLabel: {
     color: Colors.text,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
   },
   label: {
     color: Colors.textMuted,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '500',
   },
 });

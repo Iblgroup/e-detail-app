@@ -6,8 +6,8 @@ import {
   Modal,
   Pressable,
   ScrollView,
-  StyleSheet,
   StyleProp,
+  StyleSheet,
   Text,
   TextInput,
   TextStyle,
@@ -114,7 +114,7 @@ export function AppBottomSheetSelect({
           {value || placeholder}
         </Text>
         {showChevron ? (
-          <Ionicons name="chevron-down" size={18} color={chevronColor} />
+          <Ionicons name="chevron-down" size={20} color={chevronColor} />
         ) : null}
       </Pressable>
 
@@ -142,7 +142,7 @@ export function AppBottomSheetSelect({
               <View style={styles.searchBox}>
                 <Ionicons
                   name="search-outline"
-                  size={18}
+                  size={20}
                   color={Colors.textMuted}
                 />
                 <TextInput
@@ -242,8 +242,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 20,
+    paddingVertical: 16,
     height: '50%',
   },
   handle: {
@@ -280,7 +279,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     paddingVertical: 0,
     borderWidth: 0,
-    outlineStyle: 'none',
   },
   listScroll: {
     flex: 1,
@@ -303,7 +301,7 @@ const styles = StyleSheet.create({
   },
   optionText: {
     color: Colors.text,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '500',
   },
   optionTextSelected: {
@@ -326,7 +324,7 @@ const styles = StyleSheet.create({
   },
   cancelText: {
     color: Colors.text,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
   },
 });

@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   time: {
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.textMuted,
   },
 });

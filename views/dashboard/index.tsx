@@ -55,7 +55,7 @@ export default function Dashboard() {
         <AppButton
           label="New Note"
           onPress={() => {}}
-          icon={<Ionicons name="add" size={18} color={Colors.textOnDark} />}
+          icon={<Ionicons name="add" size={20} color={Colors.textOnDark} />}
         />
       }
     >

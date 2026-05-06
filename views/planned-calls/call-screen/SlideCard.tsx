@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   brand: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     color: Colors.primary,
     letterSpacing: 1,

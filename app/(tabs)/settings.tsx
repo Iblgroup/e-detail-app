@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
   },
   accountSubtitle: {
     color: Colors.text,
-    fontSize: 13,
+    fontSize: 14,
     marginTop: 5,
     marginBottom: 16,
   },
@@ -282,11 +282,11 @@ const styles = StyleSheet.create({
   },
   accountLabel: {
     color: Colors.textMuted,
-    fontSize: 13,
+    fontSize: 14,
   },
   accountValue: {
     color: Colors.secondary,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
   },
 });

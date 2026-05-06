@@ -28,7 +28,7 @@ export function AppMetricCard({
       <View style={styles.topRow}>
         {icon ? (
           <View style={[styles.iconBox, { backgroundColor: `${accent}12` }]}>
-            <Ionicons name={icon} size={19} color={accent} />
+            <Ionicons name={icon} size={20} color={accent} />
           </View>
         ) : (
           <Text style={styles.label}>{label}</Text>
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.dangerBg,
   },
   pillText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
   },
   pillTextPositive: {

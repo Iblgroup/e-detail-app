@@ -36,7 +36,7 @@ const styles = StyleSheet.create({
     opacity: 0.75,
   },
   label: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: Colors.text,
     textAlign: 'center',

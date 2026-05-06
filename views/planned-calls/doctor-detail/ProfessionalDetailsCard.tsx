@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { StyleSheet, Text, View } from 'react-native';
 
 interface DetailFieldProps {
   iconName: keyof typeof Ionicons.glyphMap;
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     width: '45%',
   },
   label: {
-    fontSize: 10,
+    fontSize: 13,
     fontWeight: '700',
     color: Colors.textMuted,
     letterSpacing: 0.5,

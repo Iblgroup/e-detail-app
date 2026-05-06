@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     color: '#94A0B2',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
     letterSpacing: 1.2,
     textTransform: 'uppercase',
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
   },
   optionText: {
     color: '#5B6A7F',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
   },
   optionTextActive: {
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
   },
   largeOptionText: {
     color: '#5B6A7F',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
   },
   largeOptionTextActive: {
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   cancelText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
   },
   submitButton: {
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
   },
   submitText: {
     color: Colors.textOnDark,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
   },
 });
