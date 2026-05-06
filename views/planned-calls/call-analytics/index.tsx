@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CallType } from '../callTypes';
+import { queueReturnToNewDoctor } from '@/views/unplanned-calls/returnToNewDoctorStore';
 
 interface CallAnalyticsProps {
   doctorName?: string;
@@ -65,12 +66,8 @@ export default function CallAnalytics({
   }));
   const handleBackPress = () => {
     if (callType === 'unplanned' && returnToNewDoctor) {
-      router.replace({
-        pathname: '/(tabs)/unplanned-calls',
-        params: {
-          openNewDoctorForm: '1',
-        },
-      });
+      queueReturnToNewDoctor();
+      router.replace('/(tabs)/unplanned-calls');
       return;
     }
 

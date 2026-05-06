@@ -1,12 +1,13 @@
 import { AppBarChart, BarChartDataPoint } from '@/components/ui/AppBarChart';
 import { AppButton } from '@/components/ui/AppButton';
+import { AppBottomSheetSelect } from '@/components/ui/AppBottomSheetSelect';
 import { AppLineChart, LineChartDataPoint } from '@/components/ui/AppLineChart';
 import { AppMetricCard } from '@/components/ui/AppMetricCard';
 import { ScreenLayout } from '@/components/ui/ScreenLayout';
 import { Colors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 const metrics = [
   { label: 'Total Calls', value: '284', change: '+12', tone: 'positive' },
@@ -41,16 +42,10 @@ const periodOptions = ['This Month', 'Last Month', 'This Quarter', 'This Year'];
 
 export default function AnalyticsScreen() {
   const [selectedPeriod, setSelectedPeriod] = useState(periodOptions[0]);
-  const [periodMenuVisible, setPeriodMenuVisible] = useState(false);
   const outstandingCalls = Math.max(0, rfiData.planned - rfiData.completed);
   const rfiCompletion = rfiData.planned > 0
     ? Math.round((rfiData.completed / rfiData.planned) * 100)
     : 0;
-
-  const selectPeriod = (period: string) => {
-    setSelectedPeriod(period);
-    setPeriodMenuVisible(false);
-  };
 
   return (
     <ScreenLayout
@@ -59,51 +54,29 @@ export default function AnalyticsScreen() {
       contentStyle={styles.content}
     >
       <View style={styles.headerActions}>
-        <AppButton
-          label={selectedPeriod}
-          onPress={() => setPeriodMenuVisible(true)}
-          variant="outline"
-          style={styles.periodButton}
-          textStyle={styles.periodButtonText}
-          icon={<Ionicons name="chevron-down" size={14} color={Colors.primary} />}
-        />
-        <AppButton
-          label="Export PDF"
-          style={styles.exportButton}
-          textStyle={styles.exportButtonText}
-          icon={<Ionicons name="download-outline" size={16} color={Colors.textOnDark} />}
-        />
+        <View style={styles.periodSelectWrap}>
+          <AppBottomSheetSelect
+            options={periodOptions}
+            value={selectedPeriod}
+            onChange={setSelectedPeriod}
+            placeholder="Select period"
+            title="Select Period"
+            searchable={false}
+            chevronColor={Colors.primary}
+            triggerStyle={styles.periodButton}
+            triggerContentStyle={styles.periodButtonContent}
+            triggerTextStyle={styles.periodButtonText}
+          />
+        </View>
+        <View style={styles.exportButtonWrap}>
+          <AppButton
+            label="Export PDF"
+            style={styles.exportButton}
+            textStyle={styles.exportButtonText}
+            icon={<Ionicons name="download-outline" size={16} color={Colors.textOnDark} />}
+          />
+        </View>
       </View>
-
-      <Modal
-        visible={periodMenuVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setPeriodMenuVisible(false)}
-      >
-        <Pressable style={styles.dropdownBackdrop} onPress={() => setPeriodMenuVisible(false)}>
-          <View style={styles.periodMenu}>
-            {periodOptions.map((period) => {
-              const selected = period === selectedPeriod;
-
-              return (
-                <Pressable
-                  key={period}
-                  onPress={() => selectPeriod(period)}
-                  style={[styles.periodOption, selected && styles.periodOptionSelected]}
-                >
-                  <Text style={[styles.periodOptionText, selected && styles.periodOptionTextSelected]}>
-                    {period}
-                  </Text>
-                  {selected && (
-                    <Ionicons name="checkmark-circle" size={18} color={Colors.primary} />
-                  )}
-                </Pressable>
-              );
-            })}
-          </View>
-        </Pressable>
-      </Modal>
 
       <View style={styles.metricsGrid}>
         {metrics.map((metric) => (
@@ -195,20 +168,35 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     gap: 12,
+    alignItems: 'stretch',
+  },
+  periodSelectWrap: {
+    flex: 1,
+    flexBasis: 0,
   },
   periodButton: {
-    flex: 1,
+    width: '100%',
     minHeight: 40,
     borderRadius: 12,
-    paddingVertical: 8,
-    flexDirection: 'row-reverse',
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    backgroundColor: 'transparent',
+  },
+  periodButtonContent: {
+    justifyContent: 'center',
+    gap: 6,
   },
   periodButtonText: {
     fontSize: 14,
     fontWeight: '800',
+    color: Colors.primary,
+  },
+  exportButtonWrap: {
+    flex: 1,
+    flexBasis: 0,
   },
   exportButton: {
-    flex: 1,
+    width: '100%',
     minHeight: 40,
     borderRadius: 12,
     paddingVertical: 8,
@@ -216,44 +204,6 @@ const styles = StyleSheet.create({
   exportButtonText: {
     fontSize: 14,
     fontWeight: '800',
-  },
-  dropdownBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.08)',
-    paddingHorizontal: 16,
-    paddingTop: 142,
-  },
-  periodMenu: {
-    alignSelf: 'flex-start',
-    width: 220,
-    borderRadius: 14,
-    backgroundColor: Colors.surface,
-    padding: 8,
-    gap: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.16,
-    shadowRadius: 14,
-    elevation: 8,
-  },
-  periodOption: {
-    minHeight: 44,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  periodOptionSelected: {
-    backgroundColor: Colors.primaryLight,
-  },
-  periodOptionText: {
-    color: Colors.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  periodOptionTextSelected: {
-    color: Colors.primary,
   },
   metricsGrid: {
     gap: 12,

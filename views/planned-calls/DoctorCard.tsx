@@ -14,6 +14,7 @@ export interface Doctor {
   lastVisit: string;
   scheduledTime?: string;
   status?: 'pending' | 'completed';
+  isNewDoctor?: boolean;
   isNewDoctorPending?: boolean;
 }
 
@@ -94,9 +95,9 @@ export function DoctorCard({ doctor, callType = 'planned', onPress }: DoctorCard
       <View style={styles.info}>
         <View style={styles.titleRow}>
           <Text style={styles.name}>{doctor.name}</Text>
-          {doctor.isNewDoctorPending || doctor.scheduledTime ? (
+          {doctor.isNewDoctor || doctor.isNewDoctorPending || doctor.scheduledTime ? (
             <View style={styles.titleBadges}>
-              {doctor.isNewDoctorPending ? (
+              {doctor.isNewDoctor || doctor.isNewDoctorPending ? (
                 <View style={styles.newDoctorPill}>
                   <Text style={styles.newDoctorPillText}>New Doctor</Text>
                 </View>
@@ -195,7 +196,7 @@ const styles = StyleSheet.create({
   newDoctorPill: {
     borderRadius: 999,
     paddingHorizontal: 8,
-    paddingVertical: 5,
+    paddingVertical: 4,
     backgroundColor: '#FEF3C7',
   },
   newDoctorPillText: {

@@ -1,13 +1,15 @@
+import { AppBottomSheetSelect } from '@/components/ui/AppBottomSheetSelect';
 import { AppButton } from '@/components/ui/AppButton';
 import { ScreenLayout } from '@/components/ui/ScreenLayout';
 import { Colors } from '@/constants/theme';
 import { Doctor, DoctorCard } from '@/views/planned-calls/DoctorCard';
 import { ScheduleSectionHeader } from '@/views/planned-calls/ScheduleSectionHeader';
 import { getCompletedCallIds } from '@/views/planned-calls/callCompletionStore';
+import { consumeReturnToNewDoctor } from '@/views/unplanned-calls/returnToNewDoctorStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { router } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 const unplannedDoctors: Doctor[] = [
@@ -76,10 +78,6 @@ const emptyNewDoctorForm = {
 type PickerMode = 'existing' | 'new';
 
 export default function UnplannedCalls() {
-  const { openNewDoctorForm, pendingNewDoctorId } = useLocalSearchParams<{
-    openNewDoctorForm?: string;
-    pendingNewDoctorId?: string;
-  }>();
   const [completedCallIds, setCompletedCallIds] = useState(() => getCompletedCallIds('unplanned'));
   const [addedDoctors, setAddedDoctors] = useState<Doctor[]>([]);
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>();
@@ -89,46 +87,28 @@ export default function UnplannedCalls() {
   const [newDoctorCallCompleted, setNewDoctorCallCompleted] = useState(false);
   const [activePendingDoctorId, setActivePendingDoctorId] = useState<string>();
   const [newDoctorDrafts, setNewDoctorDrafts] = useState<Record<string, typeof emptyNewDoctorForm>>({});
-  const lastHandledRouteOpenRef = useRef<string>('');
 
-  useFocusEffect(
-    useCallback(() => {
-      setCompletedCallIds(getCompletedCallIds('unplanned'));
-    }, [])
-  );
-
-  useEffect(() => {
-    const shouldOpenForm =
-      (Array.isArray(openNewDoctorForm) ? openNewDoctorForm[0] : openNewDoctorForm) === '1';
-    const normalizedPendingDoctorId = Array.isArray(pendingNewDoctorId)
-      ? pendingNewDoctorId[0]
-      : pendingNewDoctorId;
-    const routeOpenKey = `${shouldOpenForm ? '1' : '0'}:${normalizedPendingDoctorId ?? ''}`;
-
-    if (!shouldOpenForm) return;
-    if (lastHandledRouteOpenRef.current === routeOpenKey) return;
-
-    lastHandledRouteOpenRef.current = routeOpenKey;
-
-    if (normalizedPendingDoctorId) {
+  const handlePendingNewDoctorReturn = useCallback((pendingDoctorId?: string) => {
+    if (pendingDoctorId) {
       setAddedDoctors((current) => {
-        if (current.some((doctor) => doctor.id === normalizedPendingDoctorId)) return current;
+        if (current.some((doctor) => doctor.id === pendingDoctorId)) return current;
 
         return [
           ...current,
           {
-            id: normalizedPendingDoctorId,
+            id: pendingDoctorId,
             name: 'New Doctor',
             specialty: 'Details Pending',
             hospital: 'Tap to complete profile',
             lastVisit: 'Call completed',
             status: 'completed',
+            isNewDoctor: true,
             isNewDoctorPending: true,
           },
         ];
       });
-      setActivePendingDoctorId(normalizedPendingDoctorId);
-      setNewDoctorForm(newDoctorDrafts[normalizedPendingDoctorId] ?? emptyNewDoctorForm);
+      setActivePendingDoctorId(pendingDoctorId);
+      setNewDoctorForm((current) => newDoctorDrafts[pendingDoctorId] ?? current);
     } else {
       setActivePendingDoctorId(undefined);
       setNewDoctorForm(emptyNewDoctorForm);
@@ -137,8 +117,25 @@ export default function UnplannedCalls() {
     setPickerVisible(true);
     setPickerMode('new');
     setNewDoctorCallCompleted(true);
-    router.setParams({ openNewDoctorForm: undefined, pendingNewDoctorId: undefined });
-  }, [openNewDoctorForm, pendingNewDoctorId]);
+  }, [newDoctorDrafts]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setCompletedCallIds(getCompletedCallIds('unplanned'));
+      const pendingReturn = consumeReturnToNewDoctor();
+      if (pendingReturn?.shouldOpenForm) {
+        handlePendingNewDoctorReturn(pendingReturn.pendingDoctorId);
+      }
+    }, [handlePendingNewDoctorReturn])
+  );
+
+  const professionOptions = useMemo(() => {
+    const specialties = [...unplannedDoctors, ...doctorOptions, ...addedDoctors]
+      .map((doctor) => doctor.specialty?.trim())
+      .filter((specialty): specialty is string => Boolean(specialty));
+
+    return Array.from(new Set(specialties)).sort((a, b) => a.localeCompare(b));
+  }, [addedDoctors]);
 
   const existingDoctorIds = new Set([...unplannedDoctors, ...addedDoctors].map((doctor) => doctor.id));
   const availableDoctorOptions = doctorOptions.filter((doctor) => !existingDoctorIds.has(doctor.id));
@@ -198,6 +195,7 @@ export default function UnplannedCalls() {
         address: newDoctorForm.address.trim(),
         lastVisit: '2026-04-20',
         status: 'completed',
+        isNewDoctor: true,
       };
 
       setAddedDoctors((current) => {
@@ -378,12 +376,14 @@ export default function UnplannedCalls() {
                   placeholder="Doctor name"
                   placeholderTextColor={Colors.textMuted}
                 />
-                <TextInput
+                <AppBottomSheetSelect
+                  options={professionOptions}
                   value={newDoctorForm.profession}
-                  onChangeText={(value) => updateNewDoctorField('profession', value)}
-                  style={styles.input}
+                  onChange={(value) => updateNewDoctorField('profession', value)}
                   placeholder="Profession"
-                  placeholderTextColor={Colors.textMuted}
+                  title="Select Profession"
+                  searchPlaceholder="Search profession"
+                  emptyText="No professions available."
                 />
                 <TextInput
                   value={newDoctorForm.hospital}

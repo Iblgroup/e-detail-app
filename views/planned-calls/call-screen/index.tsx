@@ -7,6 +7,7 @@ import { Slide } from './SlideCard';
 import { CallSummaryData, CallSummaryModal } from './CallSummaryModal';
 import { markCallCompleted } from '../callCompletionStore';
 import { CallType } from '../callTypes';
+import { queueReturnToNewDoctor } from '@/views/unplanned-calls/returnToNewDoctorStore';
 
 const DEMO_SLIDES: Slide[] = [
   {
@@ -88,13 +89,8 @@ export default function CallScreen({
     });
 
     if (callType === 'unplanned' && returnToNewDoctor) {
-      router.replace({
-        pathname: '/(tabs)/unplanned-calls',
-        params: {
-          openNewDoctorForm: '1',
-          pendingNewDoctorId: doctorId ?? 'unknown',
-        },
-      });
+      queueReturnToNewDoctor(doctorId ?? 'unknown');
+      router.replace('/(tabs)/unplanned-calls');
       return;
     }
 
