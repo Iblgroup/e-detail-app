@@ -1,7 +1,7 @@
 import { AppButton } from '@/components/ui/AppButton';
 import { Colors } from '@/constants/theme';
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export interface CallSummaryData {
   feedback: string;
@@ -81,7 +81,12 @@ export function CallSummaryModal({
             <Text style={styles.subtitle}>Please complete the call report</Text>
           </View>
 
-          <View style={styles.content}>
+          <ScrollView
+            style={styles.scrollArea}
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
             <View style={styles.statsRow}>
               <View style={styles.statBox}>
                 <Text style={styles.statLabel}>Duration</Text>
@@ -183,30 +188,30 @@ export function CallSummaryModal({
                 );
               })}
             </View>
+          </ScrollView>
 
-            <View style={styles.actions}>
-              <AppButton
-                label="Cancel"
-                onPress={onCancel}
-                variant="secondary"
-                style={styles.cancelButton}
-                textStyle={styles.cancelText}
-              />
-              <AppButton
-                label="End Call & Submit"
-                onPress={() =>
-                  onSubmit({
-                    feedback: feedbackSummary,
-                    jointCall,
-                    samplesProvided,
-                    doctorInterest,
-                  })
-                }
-                variant="primary"
-                style={styles.submitButton}
-                textStyle={styles.submitText}
-              />
-            </View>
+          <View style={styles.actions}>
+            <AppButton
+              label="Cancel"
+              onPress={onCancel}
+              variant="secondary"
+              style={styles.cancelButton}
+              textStyle={styles.cancelText}
+            />
+            <AppButton
+              label="End Call & Submit"
+              onPress={() =>
+                onSubmit({
+                  feedback: feedbackSummary,
+                  jointCall,
+                  samplesProvided,
+                  doctorInterest,
+                })
+              }
+              variant="primary"
+              style={styles.submitButton}
+              textStyle={styles.submitText}
+            />
           </View>
         </View>
       </View>
@@ -225,6 +230,7 @@ const styles = StyleSheet.create({
   sheet: {
     width: '100%',
     maxWidth: 510,
+    maxHeight: '92%',
     borderRadius: 22,
     overflow: 'hidden',
     backgroundColor: '#FFFFFF',
@@ -244,8 +250,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 10,
   },
+  scrollArea: {
+    flexGrow: 0,
+  },
   content: {
     padding: 16,
+    paddingBottom: 24,
   },
   statsRow: {
     flexDirection: 'row',
@@ -369,6 +379,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E8EDF5',
+    backgroundColor: '#FFFFFF',
   },
   cancelButton: {
     flex: 1,

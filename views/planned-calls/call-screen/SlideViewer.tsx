@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppCarousel } from '@/components/ui/AppCarousel';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Slide, SlideCard } from './SlideCard';
 
 interface SlideViewerProps {
@@ -42,6 +43,8 @@ export function SlideViewer({
   const [current, setCurrent] = useState(0);
   const [slideElapsed, setSlideElapsed] = useState(0);
   const [spentSeconds, setSpentSeconds] = useState<number[]>(() => slides.map(() => 0));
+  const currentRef = useRef(0);
+  const slideElapsedRef = useRef(0);
 
   const durations = useMemo(
     () => slides.map((slide) => normalizeDuration(slide.durationSeconds)),
@@ -87,9 +90,19 @@ export function SlideViewer({
   const slidesViewed = slides.length > 0 ? Math.max(completedSlides, current + 1) : 0;
 
   useEffect(() => {
+    currentRef.current = current;
+  }, [current]);
+
+  useEffect(() => {
+    slideElapsedRef.current = slideElapsed;
+  }, [slideElapsed]);
+
+  useEffect(() => {
     setCurrent(0);
     setSlideElapsed(0);
     setSpentSeconds(Array.from({ length: slides.length }, () => 0));
+    currentRef.current = 0;
+    slideElapsedRef.current = 0;
   }, [slides.length, slidesKey]);
 
   useEffect(() => {
@@ -119,38 +132,21 @@ export function SlideViewer({
     return () => clearInterval(interval);
   }, [current, isPaused, slides.length]);
 
-  const goToSlide = useCallback(
-    (target: number) => {
-      if (target < 0 || target >= slides.length || target === current) return;
+  const goToSlide = useCallback((target: number) => {
+    const previousIndex = currentRef.current;
 
-      setSpentSeconds((seconds) => addSlideTime(seconds, current, slideElapsed));
-      setCurrent(target);
-      setSlideElapsed(0);
-    },
-    [current, slideElapsed, slides.length]
-  );
+    if (target < 0 || target >= slides.length || target === previousIndex) {
+      return;
+    }
 
-  const prev = () => goToSlide(current - 1);
-  const next = () => goToSlide(current + 1);
+    const elapsed = slideElapsedRef.current;
 
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (_, gestureState) =>
-          Math.abs(gestureState.dx) > 12 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy),
-        onPanResponderRelease: (_, gestureState) => {
-          if (gestureState.dx <= -50) {
-            next();
-            return;
-          }
-
-          if (gestureState.dx >= 50) {
-            prev();
-          }
-        },
-      }),
-    [next, prev]
-  );
+    setSpentSeconds((seconds) => addSlideTime(seconds, previousIndex, elapsed));
+    setCurrent(target);
+    setSlideElapsed(0);
+    currentRef.current = target;
+    slideElapsedRef.current = 0;
+  }, [slides.length]);
 
   if (slides.length === 0) {
     return <View style={styles.container} />;
@@ -158,26 +154,14 @@ export function SlideViewer({
 
   return (
     <View style={styles.container}>
-      {/* Prev arrow */}
-      <Pressable
-        onPress={prev}
-        style={[styles.arrow, styles.arrowLeft, current === 0 && styles.arrowHidden]}
-      >
-        <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
-      </Pressable>
-
-      {/* Slide */}
-      <View style={styles.slideWrapper} {...panResponder.panHandlers}>
-        <SlideCard slide={slides[current]} />
-      </View>
-
-      {/* Next arrow */}
-      <Pressable
-        onPress={next}
-        style={[styles.arrow, styles.arrowRight, current === slides.length - 1 && styles.arrowHidden]}
-      >
-        <Ionicons name="chevron-forward" size={22} color="#FFFFFF" />
-      </Pressable>
+      <AppCarousel
+        data={slides}
+        currentIndex={current}
+        onIndexChange={goToSlide}
+        style={styles.carousel}
+        slideStyle={styles.slideWrapper}
+        renderItem={({ item }) => <SlideCard slide={item} />}
+      />
 
       <View style={styles.bottomStack}>
         <Pressable
@@ -218,17 +202,18 @@ export function SlideViewer({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  },
+  carousel: {
+    flex: 1,
   },
   slideWrapper: {
-    width: '80%',
-    height: '78%',
-    zIndex: 1,
+    flex: 1,
   },
   bottomStack: {
     position: 'absolute',
     bottom: 12,
+    left: 0,
+    right: 0,
     alignItems: 'center',
     gap: 14,
     zIndex: 20,
@@ -297,30 +282,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '800',
-  },
-  pauseButtonTime: {
-    color: 'rgba(255,255,255,0.88)',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  arrow: {
-    position: 'absolute',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
-  },
-  arrowLeft: {
-    left: 12,
-  },
-  arrowRight: {
-    right: 12,
-  },
-  arrowHidden: {
-    opacity: 0,
   },
   dots: {
     flexDirection: 'row',
