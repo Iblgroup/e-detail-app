@@ -317,7 +317,11 @@ export default function UnplannedCalls() {
                     setNewDoctorForm(newDoctorDrafts[activePendingDoctorId] ?? emptyNewDoctorForm);
                   }
                 }}
-                style={[styles.modeButton, pickerMode === 'new' && styles.modeButtonActive]}
+                style={[
+                  styles.modeButton,
+                  styles.hiddenModeButton,
+                  pickerMode === 'new' && styles.modeButtonActive,
+                ]}
               >
                 <Text style={[styles.modeText, pickerMode === 'new' && styles.modeTextActive]}>
                   New Doctor
@@ -502,6 +506,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#EEF2F6',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  hiddenModeButton: {
+    display: 'none',
   },
   modeButtonActive: {
     backgroundColor: Colors.primary,

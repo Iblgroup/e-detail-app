@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Slide, SlideCard } from './SlideCard';
 
 interface SlideViewerProps {
@@ -133,6 +133,25 @@ export function SlideViewer({
   const prev = () => goToSlide(current - 1);
   const next = () => goToSlide(current + 1);
 
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          Math.abs(gestureState.dx) > 12 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy),
+        onPanResponderRelease: (_, gestureState) => {
+          if (gestureState.dx <= -50) {
+            next();
+            return;
+          }
+
+          if (gestureState.dx >= 50) {
+            prev();
+          }
+        },
+      }),
+    [next, prev]
+  );
+
   if (slides.length === 0) {
     return <View style={styles.container} />;
   }
@@ -148,7 +167,7 @@ export function SlideViewer({
       </Pressable>
 
       {/* Slide */}
-      <View style={styles.slideWrapper}>
+      <View style={styles.slideWrapper} {...panResponder.panHandlers}>
         <SlideCard slide={slides[current]} />
       </View>
 

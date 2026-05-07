@@ -56,6 +56,7 @@ export default function Dashboard() {
           label="New Note"
           onPress={() => {}}
           icon={<Ionicons name="add" size={20} color={Colors.textOnDark} />}
+          style={styles.hiddenHeaderButton}
         />
       }
     >
@@ -68,3 +69,9 @@ export default function Dashboard() {
     </ScreenLayout>
   );
 }
+
+const styles = {
+  hiddenHeaderButton: {
+    display: 'none' as const,
+  },
+};

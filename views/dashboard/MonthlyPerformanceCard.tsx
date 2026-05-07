@@ -83,7 +83,7 @@ export function MonthlyPerformanceCard({
   totalCalls = DEFAULT_PERIOD_DATA.monthly.totalCalls,
   changePercent = DEFAULT_PERIOD_DATA.monthly.changePercent,
   periodData,
-  initialPeriod = 'monthly',
+  initialPeriod = 'daily',
 }: MonthlyPerformanceCardProps) {
   const [selectedPeriod, setSelectedPeriod] = useState<PerformancePeriod>(initialPeriod);
 
