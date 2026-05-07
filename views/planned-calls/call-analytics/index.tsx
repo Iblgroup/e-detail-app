@@ -15,6 +15,7 @@ interface CallAnalyticsProps {
   slidesViewed: number;
   totalSlides: number;
   feedback: string;
+  doctorInterest?: 'High' | 'Medium' | 'Low';
   slideTimes: number[];
   returnToNewDoctor?: boolean;
 }
@@ -37,8 +38,60 @@ function formatSlideTime(seconds: number) {
   return `${minutes}m ${remainingSeconds}s`;
 }
 
-function getDoctorInterest(feedback: string) {
-  return feedback.trim().length > 0 && feedback !== 'No feedback provided' ? 'High' : 'Medium';
+function getBrandLabel(index: number) {
+  return `Brand ${index + 1}`;
+}
+
+function parseFeedbackTags(feedback: string) {
+  return feedback
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function getDoctorInterest(feedback: string, doctorInterest?: 'High' | 'Medium' | 'Low') {
+  if (doctorInterest) {
+    return doctorInterest;
+  }
+
+  const tags = parseFeedbackTags(feedback);
+
+  if (tags.includes('Not Interested')) {
+    return 'Low';
+  }
+
+  if (
+    tags.some((tag) =>
+      [
+        'Interested',
+        'Need Follow-up',
+        'Asked for Samples',
+        'Requested Literature',
+        'Next Visit Planned',
+      ].includes(tag)
+    )
+  ) {
+    return 'High';
+  }
+
+  if (
+    tags.some((tag) =>
+      ['Price Concern', 'Competitor Mentioned'].includes(tag)
+    )
+  ) {
+    return 'Medium';
+  }
+
+  return 'Medium';
+}
+
+function getFeedbackToneLabel(feedback: string, doctorInterest?: 'High' | 'Medium' | 'Low') {
+  const interest = getDoctorInterest(feedback, doctorInterest);
+
+  if (interest === 'High') return 'Positive Feedback';
+  if (interest === 'Low') return 'Low Interest';
+
+  return 'Neutral Feedback';
 }
 
 export default function CallAnalytics({
@@ -48,20 +101,22 @@ export default function CallAnalytics({
   slidesViewed,
   totalSlides,
   feedback,
+  doctorInterest,
   slideTimes,
   returnToNewDoctor = false,
 }: CallAnalyticsProps) {
   const safeSlideTimes =
     slideTimes.length > 0 ? slideTimes : Array.from({ length: totalSlides }, () => 0);
   const completion = totalSlides > 0 ? Math.round((slidesViewed / totalSlides) * 100) : 0;
-  const interest = getDoctorInterest(feedback);
+  const interest = getDoctorInterest(feedback, doctorInterest);
+  const feedbackToneLabel = getFeedbackToneLabel(feedback, doctorInterest);
   const slideTimeData = safeSlideTimes.map((seconds, index) => ({
-    label: `Slide ${index + 1}`,
+    label: getBrandLabel(index),
     value: seconds,
     valueLabel: `${seconds}s`,
   }));
   const slideTimeSummary = safeSlideTimes.map((seconds, index) => ({
-    label: `Slide ${index + 1}`,
+    label: getBrandLabel(index),
     valueLabel: formatSlideTime(seconds),
   }));
   const handleBackPress = () => {
@@ -131,7 +186,7 @@ export default function CallAnalytics({
             accent="#F97316"
             label="Doctor Interest"
             value={interest}
-            pill="Positive Feedback"
+            pill={feedbackToneLabel}
           />
         </View>
 

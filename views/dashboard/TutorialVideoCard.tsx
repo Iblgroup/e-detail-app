@@ -1,12 +1,25 @@
 import { Colors } from '@/constants/theme';
+import { Asset } from 'expo-asset';
 import { VideoView, useVideoPlayer } from 'expo-video';
+import type { CSSProperties } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 
-const TUTORIAL_VIDEO_URL =
-  'https://file-examples.com/storage/fe5add0b7e69f1a4793292f/2017/04/file_example_MP4_480_1_5MG.mp4';
+const tutorialVideoSource = require('../../assets/videos/file_example_MP4_480_1_5MG.mp4');
+const tutorialVideoAsset = Asset.fromModule(tutorialVideoSource);
+const tutorialVideoUri = tutorialVideoAsset.uri ?? tutorialVideoAsset.localUri ?? '';
+
+const webVideoPlayerStyle: CSSProperties = {
+  width: '100%',
+  height: 'auto',
+  aspectRatio: '16 / 9',
+  display: 'block',
+  borderRadius: 16,
+  backgroundColor: Colors.secondary,
+  objectFit: 'contain',
+};
 
 export function TutorialVideoCard() {
-  const tutorialVideoPlayer = useVideoPlayer(TUTORIAL_VIDEO_URL, (player) => {
+  const tutorialVideoPlayer = useVideoPlayer(tutorialVideoSource, (player) => {
     player.loop = false;
   });
 
@@ -20,14 +33,14 @@ export function TutorialVideoCard() {
       {Platform.OS === 'web' ? (
         <video
           controls
-          src={TUTORIAL_VIDEO_URL}
-          style={styles.webVideoPlayer}
+          src={tutorialVideoUri}
+          style={webVideoPlayerStyle}
         />
       ) : (
         <VideoView
           player={tutorialVideoPlayer}
           nativeControls
-          contentFit="cover"
+          contentFit="contain"
           style={styles.videoPlayer}
         />
       )}
@@ -62,17 +75,9 @@ const styles = StyleSheet.create({
   },
   videoPlayer: {
     width: '100%',
-    height: 220,
+    aspectRatio: 16 / 9,
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: Colors.secondary,
-  },
-  webVideoPlayer: {
-    width: '100%',
-    height: 220,
-    display: 'block',
-    borderRadius: 16,
-    backgroundColor: Colors.secondary,
-    objectFit: 'cover',
   },
 });

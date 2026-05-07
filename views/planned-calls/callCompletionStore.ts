@@ -9,6 +9,7 @@ export interface CompletedCallReport {
   slidesViewed: number;
   totalSlides: number;
   feedback: string;
+  doctorInterest?: 'High' | 'Medium' | 'Low';
   slideTimes: number[];
 }
 

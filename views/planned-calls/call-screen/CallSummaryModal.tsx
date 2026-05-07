@@ -1,12 +1,13 @@
 import { AppButton } from '@/components/ui/AppButton';
 import { Colors } from '@/constants/theme';
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 export interface CallSummaryData {
   feedback: string;
   jointCall: string;
   samplesProvided: string;
+  doctorInterest: 'High' | 'Medium' | 'Low';
 }
 
 interface CallSummaryModalProps {
@@ -20,6 +21,17 @@ interface CallSummaryModalProps {
 
 const JOINT_CALL_OPTIONS = ['No', 'NSM', 'HOS', 'SM', 'RM'];
 const SAMPLE_OPTIONS = ['Yes', 'No'];
+const DOCTOR_INTEREST_OPTIONS = ['High', 'Medium', 'Low'] as const;
+const QUICK_FEEDBACK_OPTIONS = [
+  'Interested',
+  'Need Follow-up',
+  'Asked for Samples',
+  'Requested Literature',
+  'Price Concern',
+  'Competitor Mentioned',
+  'Next Visit Planned',
+  'Not Interested',
+] as const;
 
 function formatDuration(seconds: number) {
   const safeSeconds = Math.max(0, Math.floor(seconds));
@@ -39,12 +51,26 @@ export function CallSummaryModal({
 }: CallSummaryModalProps) {
   const [jointCall, setJointCall] = useState('No');
   const [samplesProvided, setSamplesProvided] = useState('No');
-  const [feedback, setFeedback] = useState('');
+  const [doctorInterest, setDoctorInterest] = useState<'High' | 'Medium' | 'Low'>('Medium');
+  const [selectedFeedback, setSelectedFeedback] = useState<string[]>([]);
 
   const safeSlidesViewed = useMemo(
     () => Math.min(Math.max(slidesViewed, 0), totalSlides),
     [slidesViewed, totalSlides]
   );
+
+  const feedbackSummary = useMemo(
+    () => selectedFeedback.join(', '),
+    [selectedFeedback]
+  );
+
+  const toggleFeedback = (option: string) => {
+    setSelectedFeedback((current) =>
+      current.includes(option)
+        ? current.filter((item) => item !== option)
+        : [...current, option]
+    );
+  };
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
@@ -107,16 +133,56 @@ export function CallSummaryModal({
               ))}
             </View>
 
-            <Text style={styles.fieldLabel}>Doctor's Feedback</Text>
-            <TextInput
-              value={feedback}
-              onChangeText={setFeedback}
-              style={styles.feedbackInput}
-              placeholder="Enter notes, questions, or concerns..."
-              placeholderTextColor="#7B8493"
-              multiline
-              textAlignVertical="top"
-            />
+            <Text style={styles.fieldLabel}>Doctor Interest</Text>
+            <View style={styles.threeColumnRow}>
+              {DOCTOR_INTEREST_OPTIONS.map((option) => (
+                <Pressable
+                  key={option}
+                  onPress={() => setDoctorInterest(option)}
+                  style={[
+                    styles.largeOptionButton,
+                    doctorInterest === option && styles.largeOptionButtonActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.largeOptionText,
+                      doctorInterest === option && styles.largeOptionTextActive,
+                    ]}
+                  >
+                    {option}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Text style={styles.fieldLabel}>Quick Feedback</Text>
+            <Text style={styles.helperText}>Select the points that match this doctor call.</Text>
+            <View style={styles.feedbackOptions}>
+              {QUICK_FEEDBACK_OPTIONS.map((option) => {
+                const selected = selectedFeedback.includes(option);
+
+                return (
+                  <Pressable
+                    key={option}
+                    onPress={() => toggleFeedback(option)}
+                    style={[
+                      styles.feedbackChip,
+                      selected && styles.feedbackChipActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.feedbackChipText,
+                        selected && styles.feedbackChipTextActive,
+                      ]}
+                    >
+                      {option}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
 
             <View style={styles.actions}>
               <AppButton
@@ -130,9 +196,10 @@ export function CallSummaryModal({
                 label="End Call & Submit"
                 onPress={() =>
                   onSubmit({
-                    feedback: feedback.trim(),
+                    feedback: feedbackSummary,
                     jointCall,
                     samplesProvided,
+                    doctorInterest,
                   })
                 }
                 variant="primary"
@@ -240,6 +307,11 @@ const styles = StyleSheet.create({
     gap: 16,
     marginBottom: 26,
   },
+  threeColumnRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 26,
+  },
   largeOptionButton: {
     flex: 1,
     minHeight: 40,
@@ -259,17 +331,38 @@ const styles = StyleSheet.create({
   largeOptionTextActive: {
     color: '#FFFFFF',
   },
-  feedbackInput: {
-    minHeight: 96,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#D8DEE8',
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    color: '#202735',
-    fontSize: 14,
+  helperText: {
+    color: '#7B8493',
+    fontSize: 13,
     marginBottom: 30,
+  },
+  feedbackOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 30,
+  },
+  feedbackChip: {
+    minHeight: 38,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: '#EEF2F6',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  feedbackChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  feedbackChipText: {
+    color: '#5B6A7F',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  feedbackChipTextActive: {
+    color: '#FFFFFF',
   },
   actions: {
     flexDirection: 'row',

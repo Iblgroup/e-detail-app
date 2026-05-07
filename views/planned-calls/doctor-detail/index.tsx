@@ -3,8 +3,10 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { CallType } from '../callTypes';
+import { AddTokenButton } from './AddTokenButton';
 import { ArrivedButton } from './ArrivedButton';
 import { CallCompletedCard } from './CallCompletedCard';
+import { CancelCallButton } from './CancelCallButton';
 import { DoctorDetailHeader } from './DoctorDetailHeader';
 import { PlannedCallItem, PlannedCallsCard } from './PlannedCallsCard';
 import { ProfessionalDetailsCard } from './ProfessionalDetailsCard';
@@ -37,6 +39,7 @@ export default function DoctorDetail({
   callType = 'planned',
 }: DoctorDetailProps) {
   const [arrived, setArrived] = useState(false);
+  const [tokenAdded, setTokenAdded] = useState(false);
   const plannedCallsSource = doctor.plannedCalls ?? [
     {
       id: `${doctor.id}-planned-call`,
@@ -75,10 +78,16 @@ export default function DoctorDetail({
           <CallCompletedCard />
         ) : (
           <View style={styles.buttonsRow}>
-            <View style={styles.buttonCell}>
+            <View style={styles.buttonCellHalf}>
+              <AddTokenButton
+                active={tokenAdded}
+                onPress={() => setTokenAdded((value) => !value)}
+              />
+            </View>
+            <View style={styles.buttonCellHalf}>
               <ArrivedButton arrived={arrived} onPress={() => setArrived((v) => !v)} />
             </View>
-            <View style={styles.buttonCell}>
+            <View style={styles.buttonCellHalf}>
               <StartCallButton
                 enabled={arrived}
                 onPress={() =>
@@ -92,6 +101,9 @@ export default function DoctorDetail({
                   })
                 }
               />
+            </View>
+            <View style={styles.buttonCellHalf}>
+              <CancelCallButton enabled={arrived} onPress={() => setArrived(false)} />
             </View>
           </View>
         )}
@@ -117,9 +129,11 @@ const styles = StyleSheet.create({
   },
   buttonsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     marginHorizontal: -6,
+    rowGap: 12,
   },
-  buttonCell: {
+  buttonCellHalf: {
     width: '50%',
     height: 140,
     paddingHorizontal: 6,

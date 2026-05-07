@@ -1,4 +1,5 @@
-﻿import { AppBarChart, BarChartDataPoint } from '@/components/ui/AppBarChart';
+import { AppBarChart, BarChartDataPoint } from '@/components/ui/AppBarChart';
+import { AppChartCard } from '@/components/ui/AppChartCard';
 import { Colors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
@@ -75,6 +76,8 @@ const PERIOD_META = {
   },
 } as const;
 
+const PERIOD_ORDER: PerformancePeriod[] = ['daily', 'weekly', 'monthly'];
+
 export function MonthlyPerformanceCard({
   data = DEFAULT_PERIOD_DATA.monthly.data,
   totalCalls = DEFAULT_PERIOD_DATA.monthly.totalCalls,
@@ -112,11 +115,12 @@ export function MonthlyPerformanceCard({
   const isPositive = activePeriod.changePercent >= 0;
 
   return (
-    <View style={styles.card}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{activeMeta.title}</Text>
+    <AppChartCard
+      title={activeMeta.title}
+      icon={<Ionicons name="bar-chart-outline" size={20} color={Colors.primary} />}
+      headerAction={
         <View style={styles.segmentedControl}>
-          {(Object.keys(PERIOD_META) as PerformancePeriod[]).map((period) => {
+          {PERIOD_ORDER.map((period) => {
             const isActive = period === selectedPeriod;
 
             return (
@@ -137,56 +141,44 @@ export function MonthlyPerformanceCard({
             );
           })}
         </View>
-      </View>
-
-      <View style={styles.chartWrapper}>
-        <AppBarChart data={activePeriod.data} barColor={Colors.primary} height={80} />
-      </View>
-
-      <View style={styles.footer}>
-        <View>
-          <Text style={styles.totalNumber}>{activePeriod.totalCalls}</Text>
-          <Text style={styles.totalLabel}>TOTAL CALLS</Text>
+      }
+      chartWrapperStyle={styles.chartWrapper}
+      footer={
+        <View style={styles.footer}>
+          <View>
+            <Text style={styles.totalNumber}>{activePeriod.totalCalls}</Text>
+            <Text style={styles.totalLabel}>TOTAL CALLS</Text>
+          </View>
+          <View style={[styles.badge, isPositive ? styles.badgeGreen : styles.badgeRed]}>
+            <Ionicons
+              name={isPositive ? 'trending-up' : 'trending-down'}
+              size={12}
+              color={isPositive ? Colors.success : Colors.danger}
+            />
+            <Text
+              style={[styles.badgeText, isPositive ? styles.badgeTextGreen : styles.badgeTextRed]}
+            >
+              {isPositive ? '+' : ''}
+              {activePeriod.changePercent}% vs {activeMeta.compareLabel}
+            </Text>
+          </View>
         </View>
-        <View style={[styles.badge, isPositive ? styles.badgeGreen : styles.badgeRed]}>
-          <Ionicons
-            name={isPositive ? 'trending-up' : 'trending-down'}
-            size={12}
-            color={isPositive ? Colors.success : Colors.danger}
-          />
-          <Text
-            style={[styles.badgeText, isPositive ? styles.badgeTextGreen : styles.badgeTextRed]}
-          >
-            {isPositive ? '+' : ''}
-            {activePeriod.changePercent}% vs {activeMeta.compareLabel}
-          </Text>
-        </View>
-      </View>
-    </View>
+      }
+    >
+      <AppBarChart
+        data={activePeriod.data}
+        barColor={Colors.primary}
+        height={144}
+        maxValue={Math.max(...activePeriod.data.map((item) => item.value), 1)}
+        showGrid
+        showValueLabels
+        valueFormatter={(value) => `${value}`}
+      />
+    </AppChartCard>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    padding: 16,
-    gap: 12,
-    boxShadow: '0px 1px 4px rgba(43, 115, 184, 0.08)',
-    elevation: 2,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  title: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.text,
-  },
   segmentedControl: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -216,13 +208,13 @@ const styles = StyleSheet.create({
     color: Colors.textOnDark,
   },
   chartWrapper: {
-    marginTop: 4,
+    marginTop: 6,
+    paddingTop: 6,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    marginTop: 4,
     gap: 12,
   },
   totalNumber: {

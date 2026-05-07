@@ -13,6 +13,7 @@ interface AppBarChartProps {
   height?: number;
   maxValue?: number;
   showYAxis?: boolean;
+  showGrid?: boolean;
   showValueLabels?: boolean;
   valueFormatter?: (value: number) => string;
 }
@@ -20,15 +21,17 @@ interface AppBarChartProps {
 export function AppBarChart({
   data,
   barColor = Colors.primary,
-  height = 82,
+  height = 100,
   maxValue,
   showYAxis = false,
+  showGrid,
   showValueLabels = false,
   valueFormatter = (value) => String(value),
 }: AppBarChartProps) {
   const max = maxValue ?? Math.max(...data.map((item) => item.value), 1);
   const minVisibleHeight = 6;
   const yAxisTicks = [max, max * 0.75, max * 0.5, max * 0.25, 0];
+  const shouldShowGrid = showGrid ?? showYAxis;
 
   return (
     <View style={styles.container}>
@@ -44,7 +47,7 @@ export function AppBarChart({
         )}
 
         <View style={[styles.chartArea, { height }]}>
-          {showYAxis && (
+          {shouldShowGrid && (
             <View style={styles.grid}>
               {yAxisTicks.map((tick) => (
                 <View key={tick} style={styles.gridLine} />
@@ -97,10 +100,12 @@ export function AppBarChart({
 const styles = StyleSheet.create({
   container: {
     gap: 8,
+    width: '100%',
   },
   chartRow: {
     flexDirection: 'row',
     gap: 10,
+    width: '100%',
   },
   axisLabels: {
     width: 28,
@@ -116,6 +121,7 @@ const styles = StyleSheet.create({
   chartArea: {
     flex: 1,
     position: 'relative',
+    minWidth: 0,
   },
   grid: {
     ...StyleSheet.absoluteFillObject,
@@ -144,12 +150,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bar: {
-    width: '62%',
+    width: '48%',
     borderRadius: 4,
   },
   labelsRow: {
     flexDirection: 'row',
     gap: 12,
+    width: '100%',
   },
   axisLabelSpacer: {
     width: 28,
@@ -158,6 +165,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     gap: 12,
+    minWidth: 0,
   },
   labelColumn: {
     flex: 1,

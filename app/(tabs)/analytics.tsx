@@ -1,6 +1,7 @@
 import { AppBarChart, BarChartDataPoint } from '@/components/ui/AppBarChart';
 import { AppBottomSheetSelect } from '@/components/ui/AppBottomSheetSelect';
 import { AppButton } from '@/components/ui/AppButton';
+import { AppChartCard } from '@/components/ui/AppChartCard';
 import { AppLineChart, LineChartDataPoint } from '@/components/ui/AppLineChart';
 import { AppMetricCard } from '@/components/ui/AppMetricCard';
 import { ScreenLayout } from '@/components/ui/ScreenLayout';
@@ -130,22 +131,21 @@ export default function AnalyticsScreen() {
       </View>
 
       <View style={styles.chartsGrid}>
-        <View style={styles.chartCard}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="trending-up-outline" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>Call Volume vs Goal</Text>
-          </View>
-          <View style={styles.lineChartWrapper}>
+        <AppChartCard
+          title="Call Volume vs Goal"
+          icon={<Ionicons name="trending-up-outline" size={20} color={Colors.primary} />}
+          chartWrapperStyle={styles.lineChartWrapper}
+          style={styles.chartCard}
+        >
             <AppLineChart data={callVolumeData} goal={50} maxValue={80} height={230} />
-          </View>
-        </View>
+        </AppChartCard>
 
-        <View style={styles.chartCard}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="people-outline" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>Specialty Distribution</Text>
-          </View>
-          <View style={styles.barChartWrapper}>
+        <AppChartCard
+          title="Specialty Distribution"
+          icon={<Ionicons name="people-outline" size={20} color={Colors.primary} />}
+          chartWrapperStyle={styles.barChartWrapper}
+          style={styles.chartCard}
+        >
             <AppBarChart
               data={specialtyData}
               barColor={Colors.primary}
@@ -153,8 +153,7 @@ export default function AnalyticsScreen() {
               maxValue={60}
               showYAxis
             />
-          </View>
-        </View>
+        </AppChartCard>
       </View>
     </ScreenLayout>
   );
@@ -226,25 +225,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   chartCard: {
-    borderRadius: 18,
-    backgroundColor: Colors.surface,
-    padding: 18,
     minHeight: 330,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  sectionTitle: {
-    color: '#0F172A',
-    fontSize: 18,
-    fontWeight: '900',
   },
   rfiTitleRow: {
     flexDirection: 'row',

@@ -1,5 +1,6 @@
 import { Colors } from '@/constants/theme';
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
 import Svg, { Line, Polygon, Polyline } from 'react-native-svg';
 
 export interface LineChartDataPoint {
@@ -22,13 +23,20 @@ export function AppLineChart({
   maxValue,
   lineColor = Colors.primary,
 }: AppLineChartProps) {
-  const chartWidth = 320;
+  const [chartWidth, setChartWidth] = useState(320);
   const chartHeight = height;
   const topPadding = 12;
   const bottomPadding = 18;
   const usableHeight = chartHeight - topPadding - bottomPadding;
   const resolvedMax = maxValue ?? Math.max(...data.map((item) => item.value), goal ?? 0, 1);
   const ticks = [resolvedMax, resolvedMax * 0.75, resolvedMax * 0.5, resolvedMax * 0.25, 0];
+
+  const handleChartAreaLayout = (event: LayoutChangeEvent) => {
+    const nextWidth = Math.max(1, Math.round(event.nativeEvent.layout.width));
+    setChartWidth((currentWidth) =>
+      currentWidth === nextWidth ? currentWidth : nextWidth
+    );
+  };
 
   const points = data.map((item, index) => {
     const x = data.length <= 1 ? 0 : (index / (data.length - 1)) * chartWidth;
@@ -57,7 +65,7 @@ export function AppLineChart({
           ))}
         </View>
 
-        <View style={styles.chartArea}>
+        <View style={styles.chartArea} onLayout={handleChartAreaLayout}>
           <Svg width="100%" height={height} viewBox={`0 0 ${chartWidth} ${chartHeight}`}>
             {ticks.map((tick) => {
               const y = topPadding + usableHeight - (tick / resolvedMax) * usableHeight;
@@ -104,11 +112,14 @@ export function AppLineChart({
       </View>
 
       <View style={styles.labelsRow}>
-        {data.map((item) => (
-          <Text key={item.label} style={styles.label}>
-            {item.label}
-          </Text>
-        ))}
+        <View style={styles.axisLabelSpacer} />
+        <View style={styles.dataLabelsRow}>
+          {data.map((item) => (
+            <Text key={item.label} style={styles.label}>
+              {item.label}
+            </Text>
+          ))}
+        </View>
       </View>
     </View>
   );
@@ -117,10 +128,12 @@ export function AppLineChart({
 const styles = StyleSheet.create({
   container: {
     gap: 8,
+    width: '100%',
   },
   chartRow: {
     flexDirection: 'row',
     gap: 10,
+    width: '100%',
   },
   axisLabels: {
     width: 28,
@@ -136,11 +149,21 @@ const styles = StyleSheet.create({
   },
   chartArea: {
     flex: 1,
+    minWidth: 0,
   },
   labelsRow: {
-    marginLeft: 38,
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
+  axisLabelSpacer: {
+    width: 28,
+  },
+  dataLabelsRow: {
+    flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    minWidth: 0,
   },
   label: {
     color: Colors.textMuted,

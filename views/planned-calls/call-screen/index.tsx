@@ -65,6 +65,7 @@ export default function CallScreen({
   const [slideTimes, setSlideTimes] = useState<number[]>(() => DEMO_SLIDES.map(() => 0));
   const [slidesViewed, setSlidesViewed] = useState(0);
   const [isSummaryVisible, setIsSummaryVisible] = useState(false);
+  const [isTimerPaused, setIsTimerPaused] = useState(false);
   const hasEndedRef = useRef(false);
 
   const handleRequestEndCall = useCallback(() => {
@@ -85,6 +86,7 @@ export default function CallScreen({
       slidesViewed,
       totalSlides: DEMO_SLIDES.length,
       feedback: summary.feedback || 'No feedback provided',
+      doctorInterest: summary.doctorInterest,
       slideTimes,
     });
 
@@ -104,6 +106,7 @@ export default function CallScreen({
         slidesViewed: String(slidesViewed),
         totalSlides: String(DEMO_SLIDES.length),
         feedback: summary.feedback || 'No feedback provided',
+        doctorInterest: summary.doctorInterest,
         jointCall: summary.jointCall,
         samplesProvided: summary.samplesProvided,
         slideTimes: slideTimes.join(','),
@@ -122,7 +125,8 @@ export default function CallScreen({
       <View style={styles.body}>
         <SlideViewer
           slides={DEMO_SLIDES}
-          isPaused={isSummaryVisible}
+          isPaused={isSummaryVisible || isTimerPaused}
+          onTogglePause={() => setIsTimerPaused((value) => !value)}
           onElapsedChange={setElapsedSeconds}
           onSlideTimesChange={setSlideTimes}
           onSlidesViewedChange={handleSlidesViewedChange}

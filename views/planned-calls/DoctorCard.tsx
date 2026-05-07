@@ -33,6 +33,7 @@ export function DoctorCard({ doctor, callType = 'planned', onPress }: DoctorCard
     slidesViewed: 3,
     totalSlides: 3,
     feedback: 'Doctor responded positively and requested a follow-up discussion.',
+    doctorInterest: 'High',
     slideTimes: [53, 8, 1],
   });
 
@@ -53,6 +54,7 @@ export function DoctorCard({ doctor, callType = 'planned', onPress }: DoctorCard
           slidesViewed: String(report.slidesViewed),
           totalSlides: String(report.totalSlides),
           feedback: report.feedback,
+          doctorInterest: report.doctorInterest,
           slideTimes: report.slideTimes.join(','),
         },
       });

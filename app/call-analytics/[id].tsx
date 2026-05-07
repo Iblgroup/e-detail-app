@@ -39,6 +39,7 @@ export default function CallAnalyticsRoute() {
     slidesViewed?: string;
     totalSlides?: string;
     feedback?: string;
+    doctorInterest?: 'High' | 'Medium' | 'Low';
     slideTimes?: string;
     callType?: CallType;
     doctorName?: string;
@@ -59,6 +60,7 @@ export default function CallAnalyticsRoute() {
       slidesViewed={parseNumber(params.slidesViewed)}
       totalSlides={parseNumber(params.totalSlides, 1)}
       feedback={params.feedback || 'No feedback provided'}
+      doctorInterest={params.doctorInterest}
       slideTimes={parseSlideTimes(params.slideTimes)}
       returnToNewDoctor={returnToNewDoctor}
     />

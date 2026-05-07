@@ -6,6 +6,7 @@ import { Slide, SlideCard } from './SlideCard';
 interface SlideViewerProps {
   slides: Slide[];
   isPaused?: boolean;
+  onTogglePause?: () => void;
   onElapsedChange?: (seconds: number) => void;
   onSlideTimesChange?: (seconds: number[]) => void;
   onSlidesViewedChange?: (slidesViewed: number, canEndCall: boolean) => void;
@@ -33,6 +34,7 @@ function addSlideTime(seconds: number[], index: number, duration: number) {
 export function SlideViewer({
   slides,
   isPaused = false,
+  onTogglePause,
   onElapsedChange,
   onSlideTimesChange,
   onSlidesViewedChange,
@@ -150,17 +152,6 @@ export function SlideViewer({
         <SlideCard slide={slides[current]} />
       </View>
 
-      <View style={styles.slideTimer}>
-        <View style={styles.slideTimerHeader}>
-          <Text style={styles.slideTimerLabel}>Slide {current + 1}/{slides.length}</Text>
-          <Text style={styles.slideTimerValue}>{formatTime(currentSlideSpentSeconds)} spent</Text>
-        </View>
-        <View style={styles.slideTimerTrack}>
-          <View style={[styles.slideTimerFill, { flex: completedSeconds }]} />
-          <View style={{ flex: Math.max(0, currentDuration - completedSeconds) }} />
-        </View>
-      </View>
-
       {/* Next arrow */}
       <Pressable
         onPress={next}
@@ -169,13 +160,37 @@ export function SlideViewer({
         <Ionicons name="chevron-forward" size={22} color="#FFFFFF" />
       </Pressable>
 
-      {/* Dots */}
-      <View style={styles.dots}>
-        {slides.map((_, i) => (
-          <Pressable key={i} onPress={() => goToSlide(i)}>
-            <View style={[styles.dot, i === current && styles.dotActive]} />
-          </Pressable>
-        ))}
+      <View style={styles.bottomStack}>
+        <Pressable
+          onPress={onTogglePause}
+          style={[styles.pauseButton, isPaused ? styles.resumeButton : styles.pauseButtonActive]}
+        >
+          <Ionicons
+            name={isPaused ? 'play-outline' : 'pause-outline'}
+            size={18}
+            color="#FFFFFF"
+          />
+          <Text style={styles.pauseButtonLabel}>{isPaused ? 'Resume' : 'Pause'}</Text>
+        </Pressable>
+
+        <View style={styles.slideTimer}>
+          <View style={styles.slideTimerHeader}>
+            <Text style={styles.slideTimerLabel}>Slide {current + 1}/{slides.length}</Text>
+            <Text style={styles.slideTimerValue}>{formatTime(currentSlideSpentSeconds)} spent</Text>
+          </View>
+          <View style={styles.slideTimerTrack}>
+            <View style={[styles.slideTimerFill, { flex: completedSeconds }]} />
+            <View style={{ flex: Math.max(0, currentDuration - completedSeconds) }} />
+          </View>
+        </View>
+
+        <View style={styles.dots}>
+          {slides.map((_, i) => (
+            <Pressable key={i} onPress={() => goToSlide(i)}>
+              <View style={[styles.dot, i === current && styles.dotActive]} />
+            </Pressable>
+          ))}
+        </View>
       </View>
     </View>
   );
@@ -190,16 +205,24 @@ const styles = StyleSheet.create({
   slideWrapper: {
     width: '80%',
     height: '78%',
+    zIndex: 1,
+  },
+  bottomStack: {
+    position: 'absolute',
+    bottom: 12,
+    alignItems: 'center',
+    gap: 14,
+    zIndex: 20,
+    elevation: 20,
   },
   slideTimer: {
-    position: 'absolute',
-    bottom: 46,
     width: 172,
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: 8,
     backgroundColor: 'rgba(255,255,255,0.1)',
     gap: 6,
+    marginBottom: 2,
   },
   slideTimerHeader: {
     flexDirection: 'row',
@@ -227,6 +250,40 @@ const styles = StyleSheet.create({
   slideTimerFill: {
     backgroundColor: '#FFFFFF',
   },
+  pauseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 40,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+    marginBottom: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  pauseButtonActive: {
+    backgroundColor: '#EF4444',
+    borderColor: '#F87171',
+    shadowColor: '#EF4444',
+  },
+  resumeButton: {
+    backgroundColor: '#16A34A',
+    borderColor: '#4ADE80',
+    shadowColor: '#16A34A',
+  },
+  pauseButtonLabel: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  pauseButtonTime: {
+    color: 'rgba(255,255,255,0.88)',
+    fontSize: 13,
+    fontWeight: '700',
+  },
   arrow: {
     position: 'absolute',
     width: 44,
@@ -247,8 +304,6 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   dots: {
-    position: 'absolute',
-    bottom: 16,
     flexDirection: 'row',
     gap: 6,
     alignItems: 'center',

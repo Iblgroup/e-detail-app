@@ -15,7 +15,11 @@ function formatTime(seconds: number) {
   return `${m}:${s}`;
 }
 
-export function CallHeader({ elapsedSeconds = 0, canEndCall = true, onEndCall }: CallHeaderProps) {
+export function CallHeader({
+  elapsedSeconds = 0,
+  canEndCall = true,
+  onEndCall,
+}: CallHeaderProps) {
   const handleEndCall = () => {
     if (!canEndCall) return;
 
