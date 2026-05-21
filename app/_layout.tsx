@@ -1,31 +1,85 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { Stack, useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { TamaguiProvider } from '@tamagui/core';
+import { useEffect } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors } from '@/constants/theme';
+import { AuthProvider, useAuth } from '@/providers/AuthProvider';
+import { AppQueryProvider } from '@/providers/QueryProvider';
 import config from '../tamagui.config';
 
 export const unstable_settings = {
   anchor: '(tabs)',
 };
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+function AuthGate() {
+  const { isAuthenticated, isHydrated } = useAuth();
+  const router = useRouter();
+  const segments = useSegments();
+  const navigationState = useRootNavigationState();
+
+  useEffect(() => {
+    if (!isHydrated || !navigationState?.key) {
+      return;
+    }
+
+    const inLoginRoute = segments[0] === 'login';
+
+    if (!isAuthenticated && !inLoginRoute) {
+      router.replace('/login');
+      return;
+    }
+
+    if (isAuthenticated && inLoginRoute) {
+      router.replace('/(tabs)');
+    }
+  }, [isAuthenticated, isHydrated, navigationState?.key, router, segments]);
+
+  if (!isHydrated) {
+    return (
+      <View style={styles.loadingShell}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
 
   return (
-    <TamaguiProvider config={config} defaultTheme={colorScheme === 'dark' ? 'dark' : 'light'}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-          <Stack.Screen name="doctor/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="call/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="call-analytics/[id]" options={{ headerShown: false }} />
-        </Stack>
-        <StatusBar style="auto" />
-      </ThemeProvider>
-    </TamaguiProvider>
+    <Stack>
+      <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+      <Stack.Screen name="doctor/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="call/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="call-analytics/[id]" options={{ headerShown: false }} />
+    </Stack>
   );
 }
+
+export default function RootLayout() {
+  const colorScheme = useColorScheme();
+  return (
+    <AppQueryProvider>
+      <AuthProvider>
+        <TamaguiProvider config={config} defaultTheme={colorScheme === 'dark' ? 'dark' : 'light'}>
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <AuthGate />
+            <StatusBar style="auto" />
+          </ThemeProvider>
+        </TamaguiProvider>
+      </AuthProvider>
+    </AppQueryProvider>
+  );
+}
+
+const styles = {
+  loadingShell: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.background,
+  },
+};

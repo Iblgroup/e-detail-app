@@ -1,4 +1,5 @@
 import { Colors } from '@/constants/theme';
+import { useAuth } from '@/providers/AuthProvider';
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -15,11 +16,12 @@ interface AppHeaderProps {
 export function AppHeader({
   title,
   subtitle,
-  userName = 'John Doe',
+  userName,
   notificationCount = 0,
   onNotification,
   action,
 }: AppHeaderProps) {
+  const { user } = useAuth();
   const formattedDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
@@ -31,7 +33,7 @@ export function AppHeader({
     <View style={styles.container}>
       <View style={styles.left}>
         <Text style={styles.greeting}>
-          {title ?? `Hello, ${userName}`}
+          {title ?? `Hello, ${userName ?? user?.name ?? 'John Doe'}`}
         </Text>
         {subtitle ? (
           <Text style={styles.subtitle}>{subtitle}</Text>

@@ -1,6 +1,7 @@
 import { AppButton } from '@/components/ui/AppButton';
 import { ScreenLayout } from '@/components/ui/ScreenLayout';
 import { Colors } from '@/constants/theme';
+import { ROLE_LABELS, useAuth } from '@/providers/AuthProvider';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { StyleSheet, Switch, Text, TextInput, useWindowDimensions, View } from 'react-native';
@@ -69,6 +70,7 @@ function SecurityRow({ label, value, onValueChange }: SecurityRowProps) {
 export default function SettingsScreen() {
   const { width } = useWindowDimensions();
   const isWide = width >= 760;
+  const { user, logout } = useAuth();
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(true);
   const [sessionTimeoutEnabled, setSessionTimeoutEnabled] = useState(true);
@@ -86,17 +88,35 @@ export default function SettingsScreen() {
               <Ionicons name="person-outline" size={34} color={Colors.primary} />
             </View>
             <Text style={styles.accountTitle}>Account Info</Text>
-            <Text style={styles.accountSubtitle}>Member since Jan 2024</Text>
+            <Text style={styles.accountSubtitle}>{user?.name ?? 'Active user session'}</Text>
 
             <View style={styles.accountMeta}>
               <View style={styles.accountRow}>
                 <Text style={styles.accountLabel}>Role</Text>
-                <Text style={styles.accountValue}>Medical Rep</Text>
+                <Text style={styles.accountValue}>
+                  {user?.role ? ROLE_LABELS[user.role] : 'Medical Rep'}
+                </Text>
               </View>
               <View style={styles.accountRow}>
-                <Text style={styles.accountLabel}>Region</Text>
-                <Text style={styles.accountValue}>South Zone</Text>
+                <Text style={styles.accountLabel}>Username</Text>
+                <Text style={styles.accountValue}>{user?.username ?? 'rep'}</Text>
               </View>
+              {user?.team ? (
+                <View style={styles.accountRow}>
+                  <Text style={styles.accountLabel}>Team</Text>
+                  <Text style={styles.accountValue}>{user.team}</Text>
+                </View>
+              ) : null}
+              <AppButton
+                label="Logout"
+                variant="outline"
+                onPress={() => {
+                  void logout();
+                }}
+                style={styles.logoutButton}
+                textStyle={styles.logoutButtonText}
+                icon={<Ionicons name="log-out-outline" size={18} color={Colors.primary} />}
+              />
             </View>
           </View>
         </View>
@@ -273,6 +293,13 @@ const styles = StyleSheet.create({
   accountMeta: {
     width: '100%',
     gap: 12,
+  },
+  logoutButton: {
+    marginTop: 8,
+    alignSelf: 'stretch',
+  },
+  logoutButtonText: {
+    color: Colors.primary,
   },
   accountRow: {
     flexDirection: 'row',
