@@ -17,12 +17,14 @@ export interface DoctorDetailData {
   id: string;
   name: string;
   specialty: string;
+  specialtyId?: number;
   hospital: string;
   address: string;
   lastVisit: string;
   doctorRating: string;
   pmdcNumber: string;
   scheduledTime?: string;
+  teamId?: number;
   history: HistoryItem[];
   plannedCalls?: PlannedCallItem[];
 }
@@ -97,6 +99,8 @@ export default function DoctorDetail({
                       id: doctor.id,
                       callType,
                       doctorName: doctor.name,
+                      specialtyId: doctor.specialtyId ? String(doctor.specialtyId) : undefined,
+                      teamId: doctor.teamId ? String(doctor.teamId) : undefined,
                     },
                   })
                 }

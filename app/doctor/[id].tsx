@@ -162,16 +162,18 @@ const DOCTORS: Record<string, DoctorDetailData> = {
 };
 
 export default function DoctorDetailScreen() {
-  const { id, completed, callType, name, specialty, hospital, address, lastVisit, scheduledTime } = useLocalSearchParams<{
+  const { id, completed, callType, name, specialty, specialtyId, hospital, address, lastVisit, scheduledTime, teamId } = useLocalSearchParams<{
     id: string;
     completed?: string;
     callType?: CallType;
     name?: string;
     specialty?: string;
+    specialtyId?: string;
     hospital?: string;
     address?: string;
     lastVisit?: string;
     scheduledTime?: string;
+    teamId?: string;
   }>();
   const doctorId = Array.isArray(id) ? id[0] : id;
   const normalizedCallType: CallType = callType === 'unplanned' ? 'unplanned' : 'planned';
@@ -182,12 +184,14 @@ export default function DoctorDetailScreen() {
           id: doctorId,
           name: getParam(name) ?? 'New Doctor',
           specialty: getParam(specialty) ?? 'Specialist',
+          specialtyId: Number(getParam(specialtyId)) || undefined,
           hospital: getParam(hospital) ?? 'Clinic',
           address: getParam(address) ?? 'Address not added',
           lastVisit: getParam(lastVisit) ?? 'New doctor',
           doctorRating: 'New',
           pmdcNumber: 'PMDC Pending',
           scheduledTime: getParam(scheduledTime) ?? 'Time TBD',
+          teamId: Number(getParam(teamId)) || undefined,
           history: [],
           plannedCalls: [
             {

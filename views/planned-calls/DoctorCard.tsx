@@ -9,6 +9,7 @@ export interface Doctor {
   id: string;
   name: string;
   specialty: string;
+  specialtyId?: number;
   hospital: string;
   address?: string;
   lastVisit: string;
@@ -16,6 +17,7 @@ export interface Doctor {
   status?: 'pending' | 'completed';
   isNewDoctor?: boolean;
   isNewDoctorPending?: boolean;
+  teamId?: number;
 }
 
 interface DoctorCardProps {
@@ -69,10 +71,12 @@ export function DoctorCard({ doctor, callType = 'planned', onPress }: DoctorCard
         completed: isCompleted ? '1' : '0',
         name: doctor.name,
         specialty: doctor.specialty,
+        specialtyId: doctor.specialtyId ? String(doctor.specialtyId) : undefined,
         hospital: doctor.hospital,
         address: doctor.address,
         lastVisit: doctor.lastVisit,
         scheduledTime: doctor.scheduledTime,
+        teamId: doctor.teamId ? String(doctor.teamId) : undefined,
       },
     });
   };

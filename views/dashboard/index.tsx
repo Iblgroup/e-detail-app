@@ -1,12 +1,11 @@
-import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { AppButton } from '@/components/ui/AppButton';
-import { AppChartCard } from '@/components/ui/AppChartCard';
-import { ScreenLayout } from '@/components/ui/ScreenLayout';
 import { useGetFieldForceHierarchy } from '@/api/master-data';
+import { AppButton } from '@/components/ui/AppButton';
+import { ScreenLayout } from '@/components/ui/ScreenLayout';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/providers/AuthProvider';
+import { Ionicons } from '@expo/vector-icons';
+import { useEffect } from 'react';
+import { StyleSheet } from 'react-native';
 import { MonthlyPerformanceCard } from './MonthlyPerformanceCard';
 import { TutorialVideoCard } from './TutorialVideoCard';
 
@@ -60,20 +59,9 @@ export default function Dashboard() {
   const teamQuery = useGetFieldForceHierarchy();
   const { user } = useAuth();
   const hierarchyRows = teamQuery.data?.data ?? [];
-  const ownHierarchyRows = user?.sapId
-    ? hierarchyRows.filter((row) => String(row.RM_SAP_ID ?? '') === user.sapId)
-    : [];
-  const rmProfile = ownHierarchyRows[0];
-  const repIds = new Set(
-    ownHierarchyRows
-      .map((row) => String(row.MIE_SAP_ID ?? row.MIE_ID ?? '').trim())
-      .filter(Boolean),
-  );
-  const repBases = new Set(
-    ownHierarchyRows
-      .map((row) => asText(row.MIE_BASE, ''))
-      .filter(Boolean),
-  );
+  const repProfile = user?.sapId
+    ? hierarchyRows.find((row) => String(row.MIE_SAP_ID ?? '') === user.sapId)
+    : undefined;
 
   useEffect(() => {
     if (teamQuery.data) {
@@ -93,12 +81,12 @@ export default function Dashboard() {
       ? 'Waiting for the first successful response.'
       : 'Set EXPO_PUBLIC_API_BASE_URL to reach e-detailing-be.';
 
-  const profileName = asText(rmProfile?.RM, user?.name ?? 'Regional Manager');
-  const profileTeam = asText(rmProfile?.TEAMNAME, user?.team ?? 'Unknown team');
-  const profileSap = asText(rmProfile?.RM_SAP_ID, user?.sapId ?? 'Unknown SAP');
-  const profileManager = asText(rmProfile?.SM, 'Not available');
-  const profileRepCount = repIds.size;
-  const profileCoverage = repBases.size;
+  const profileName = asText(repProfile?.MIE_NAME, user?.name ?? 'Medical Rep');
+  const profileTeam = asText(repProfile?.TEAMNAME, user?.team ?? 'Unknown team');
+  const profileSap = asText(repProfile?.MIE_SAP_ID, user?.sapId ?? 'Unknown SAP');
+  const profileManager = asText(repProfile?.RM, 'Not available');
+  const profileBase = asText(repProfile?.MIE_BASE, 'Not available');
+  const profileSm = asText(repProfile?.SM, 'Not available');
 
   return (
     <ScreenLayout
@@ -113,7 +101,7 @@ export default function Dashboard() {
         />
       }
     >
-      <AppChartCard
+      {/* <AppChartCard
         title="Your Team Profile"
         icon={<Ionicons name="person-circle-outline" size={18} color={Colors.primary} />}
       >
@@ -131,7 +119,7 @@ export default function Dashboard() {
             </View>
             <View style={styles.profileHeroText}>
               <Text style={styles.profileName}>{profileName}</Text>
-              <Text style={styles.profileRole}>Regional Manager</Text>
+              <Text style={styles.profileRole}>Medical Rep</Text>
             </View>
           </View>
 
@@ -145,16 +133,16 @@ export default function Dashboard() {
               <Text style={styles.profileValue}>{profileSap}</Text>
             </View>
             <View style={styles.profileItem}>
-              <Text style={styles.profileLabel}>Reporting SM</Text>
+              <Text style={styles.profileLabel}>Reporting RM</Text>
               <Text style={styles.profileValue}>{profileManager}</Text>
             </View>
             <View style={styles.profileItem}>
-              <Text style={styles.profileLabel}>Medical Reps</Text>
-              <Text style={styles.profileValue}>{String(profileRepCount)}</Text>
+              <Text style={styles.profileLabel}>Base</Text>
+              <Text style={styles.profileValue}>{profileBase}</Text>
             </View>
             <View style={styles.profileItem}>
-              <Text style={styles.profileLabel}>Coverage Bases</Text>
-              <Text style={styles.profileValue}>{String(profileCoverage)}</Text>
+              <Text style={styles.profileLabel}>Reporting SM</Text>
+              <Text style={styles.profileValue}>{profileSm}</Text>
             </View>
             <View style={styles.profileItem}>
               <Text style={styles.profileLabel}>Data Source</Text>
@@ -162,9 +150,9 @@ export default function Dashboard() {
             </View>
           </View>
         </View>
-      </AppChartCard>
+      </AppChartCard> */}
 
-      <AppChartCard
+      {/* <AppChartCard
         title="Team API Status"
         icon={<Ionicons name="server-outline" size={18} color={Colors.primary} />}
         headerAction={
@@ -192,7 +180,7 @@ export default function Dashboard() {
             </Text>
           ) : null}
         </View>
-      </AppChartCard>
+      </AppChartCard> */}
 
       <TutorialVideoCard />
       <MonthlyPerformanceCard periodData={dashboardPerformance} />

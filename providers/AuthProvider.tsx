@@ -25,6 +25,8 @@ export interface AuthUser {
   role: UserRole;
   team?: string;
   sapId?: string;
+  mieId?: string;
+  teamId?: number;
 }
 
 interface PersistedSession {
@@ -49,20 +51,24 @@ type DummyAccount = AuthUser & { password: string };
 
 const DUMMY_ACCOUNTS: DummyAccount[] = [
   {
-    username: 'rmextor',
-    password: 'rmextor123',
-    name: 'M Hassan Khalid Extor',
-    role: 'rm',
+    username: 'abdullah',
+    password: 'abdullah123',
+    name: 'Abdullah Bin Sohail',
+    role: 'rep',
     team: 'TITANS EXTOR',
-    sapId: '11001489',
+    sapId: '11004745',
+    mieId: '20806',
+    teamId: 9,
   },
   {
-    username: 'rmvibrant',
-    password: 'rmvibrant123',
-    name: 'Muhammad Faisal Suk Vib',
-    role: 'rm',
+    username: 'abdulghaffar',
+    password: 'abdulghaffar123',
+    name: 'Abdul Ghaffar',
+    role: 'rep',
     team: 'VIBRANT',
-    sapId: '11002454',
+    sapId: '11003762',
+    mieId: '6502500',
+    teamId: 5,
   },
 ];
 
@@ -70,6 +76,30 @@ const SESSION_STORAGE_KEY = 'e_detail_app_session';
 const sessionFileUri = FileSystem.documentDirectory
   ? `${FileSystem.documentDirectory}e-detail-app-session.json`
   : null;
+
+function enrichUserFromDummyAccounts(user: AuthUser | null): AuthUser | null {
+  if (!user?.username) {
+    return user;
+  }
+
+  const matchingAccount = DUMMY_ACCOUNTS.find(
+    (candidate) => candidate.username.toLowerCase() === user.username.toLowerCase(),
+  );
+
+  if (!matchingAccount) {
+    return user;
+  }
+
+  return {
+    ...matchingAccount,
+    role: user.role ?? matchingAccount.role,
+    name: user.name || matchingAccount.name,
+    team: user.team ?? matchingAccount.team,
+    sapId: user.sapId ?? matchingAccount.sapId,
+    mieId: user.mieId ?? matchingAccount.mieId,
+    teamId: user.teamId ?? matchingAccount.teamId,
+  };
+}
 
 async function readStoredSession(): Promise<PersistedSession | null> {
   try {
@@ -164,9 +194,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      const normalizedUser = enrichUserFromDummyAccounts(storedSession?.user ?? null);
       setToken(storedSession?.token ?? null);
-      setUser(storedSession?.user ?? null);
+      setUser(normalizedUser);
       setIsHydrated(true);
+
+      if (storedSession?.token && normalizedUser) {
+        void writeStoredSession({
+          token: storedSession.token,
+          user: normalizedUser,
+        });
+      }
     };
 
     void hydrate();

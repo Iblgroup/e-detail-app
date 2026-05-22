@@ -17,8 +17,8 @@ import { Colors } from '@/constants/theme';
 import { useAuth } from '@/providers/AuthProvider';
 
 const demoAccounts = [
-  { label: 'RM - Titans Extor', credentials: 'rmextor / rmextor123' },
-  { label: 'RM - Vibrant', credentials: 'rmvibrant / rmvibrant123' },
+  { label: 'Medical Rep - Titans Extor', credentials: 'abdullah / abdullah123' },
+  { label: 'Medical Rep - Vibrant', credentials: 'abdulghaffar / abdulghaffar123' },
 ];
 
 export default function LoginScreen() {
@@ -83,7 +83,7 @@ export default function LoginScreen() {
 
           <View style={styles.formCard}>
             <Text style={styles.formTitle}>Welcome back</Text>
-            <Text style={styles.formSubtitle}>Use your RM account to continue.</Text>
+            <Text style={styles.formSubtitle}>Use your Medical Rep account to continue.</Text>
 
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Username</Text>
@@ -156,12 +156,12 @@ export default function LoginScreen() {
             <View style={styles.helperCard}>
               <Text style={styles.helperTitle}>Current login source</Text>
               <Text style={styles.helperBody}>
-                This mobile app currently allows only the two RM accounts you shared until backend auth is added.
+                This mobile app now allows one Medical Rep login for each team until backend auth is added.
               </Text>
             </View>
 
             <View style={styles.credentialsCard}>
-              <Text style={styles.credentialsTitle}>RM credentials</Text>
+              <Text style={styles.credentialsTitle}>Medical Rep credentials</Text>
               {demoAccounts.map((account) => (
                 <View key={account.label} style={styles.credentialsRow}>
                   <Text style={styles.credentialsLabel}>{account.label}</Text>

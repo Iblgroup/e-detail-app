@@ -16,6 +16,21 @@ interface SlideCardProps {
 }
 
 export function SlideCard({ slide }: SlideCardProps) {
+  const shouldShowHeroImage = Boolean(slide.image) && slide.bullets.length === 0;
+
+  if (shouldShowHeroImage) {
+    return (
+      <View style={styles.card}>
+        <Image source={slide.image} style={styles.heroImage} resizeMode="contain" />
+        <View style={styles.heroFooter}>
+          <Text style={styles.heroBrand}>{slide.brand}</Text>
+          <Text style={styles.heroTitle}>{slide.title}</Text>
+          <Text style={styles.heroSubtitle}>{slide.subtitle}</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.card}>
       <View style={styles.content}>
@@ -99,5 +114,34 @@ const styles = StyleSheet.create({
   image: {
     width: '45%',
     height: '100%',
+  },
+  heroImage: {
+    flex: 1,
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+  },
+  heroFooter: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    gap: 4,
+  },
+  heroBrand: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  heroTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  heroSubtitle: {
+    fontSize: 13,
+    color: '#6B7280',
   },
 });

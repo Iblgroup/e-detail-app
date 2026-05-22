@@ -1,4 +1,4 @@
-import { View, StyleSheet } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useCallback, useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { CallHeader } from './CallHeader';
@@ -8,6 +8,7 @@ import { CallSummaryData, CallSummaryModal } from './CallSummaryModal';
 import { markCallCompleted } from '../callCompletionStore';
 import { CallType } from '../callTypes';
 import { queueReturnToNewDoctor } from '@/views/unplanned-calls/returnToNewDoctorStore';
+import { DoctorCallSlide, useForcingSlides } from '@/api/content';
 
 const DEMO_SLIDES: Slide[] = [
   {
@@ -53,6 +54,20 @@ interface CallScreenProps {
   callType?: CallType;
   doctorName?: string;
   returnToNewDoctor?: boolean;
+  specialtyId?: number;
+  teamId?: number;
+}
+
+function mapForcingSlides(slides: DoctorCallSlide[]): Slide[] {
+  return slides.map((slide) => ({
+    id: slide.id,
+    brand: slide.brand,
+    title: slide.title,
+    subtitle: slide.subtitle,
+    bullets: slide.bullets,
+    durationSeconds: slide.durationSeconds,
+    image: slide.image,
+  }));
 }
 
 export default function CallScreen({
@@ -60,9 +75,20 @@ export default function CallScreen({
   callType = 'planned',
   doctorName,
   returnToNewDoctor = false,
+  specialtyId,
+  teamId,
 }: CallScreenProps) {
+  const hasForcingContext = Boolean(teamId && specialtyId);
+  const forcingSlidesQuery = useForcingSlides({ teamId, doctorSpecId: specialtyId });
+  const slides = !hasForcingContext
+    ? DEMO_SLIDES
+    : forcingSlidesQuery.data && forcingSlidesQuery.data.length > 0
+      ? mapForcingSlides(forcingSlidesQuery.data)
+      : forcingSlidesQuery.isLoading
+        ? []
+        : DEMO_SLIDES;
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [slideTimes, setSlideTimes] = useState<number[]>(() => DEMO_SLIDES.map(() => 0));
+  const [slideTimes, setSlideTimes] = useState<number[]>([]);
   const [slidesViewed, setSlidesViewed] = useState(0);
   const [isSummaryVisible, setIsSummaryVisible] = useState(false);
   const [isTimerPaused, setIsTimerPaused] = useState(false);
@@ -84,7 +110,7 @@ export default function CallScreen({
       doctorName,
       durationSeconds: elapsedSeconds,
       slidesViewed,
-      totalSlides: DEMO_SLIDES.length,
+      totalSlides: slides.length,
       feedback: summary.feedback || 'No feedback provided',
       doctorInterest: summary.doctorInterest,
       slideTimes,
@@ -104,7 +130,7 @@ export default function CallScreen({
         doctorName,
         duration: String(elapsedSeconds),
         slidesViewed: String(slidesViewed),
-        totalSlides: String(DEMO_SLIDES.length),
+        totalSlides: String(slides.length),
         feedback: summary.feedback || 'No feedback provided',
         doctorInterest: summary.doctorInterest,
         jointCall: summary.jointCall,
@@ -113,7 +139,7 @@ export default function CallScreen({
         returnToNewDoctor: returnToNewDoctor ? '1' : '0',
       },
     });
-  }, [callType, doctorId, doctorName, elapsedSeconds, returnToNewDoctor, slideTimes, slidesViewed]);
+  }, [callType, doctorId, doctorName, elapsedSeconds, returnToNewDoctor, slideTimes, slides.length, slidesViewed]);
 
   return (
     <View style={styles.screen}>
@@ -123,8 +149,14 @@ export default function CallScreen({
         onEndCall={handleRequestEndCall}
       />
       <View style={styles.body}>
+        {hasForcingContext && forcingSlidesQuery.isLoading ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="large" color="#FFFFFF" />
+            <Text style={styles.loadingText}>Loading forcing content...</Text>
+          </View>
+        ) : null}
         <SlideViewer
-          slides={DEMO_SLIDES}
+          slides={slides}
           isPaused={isSummaryVisible || isTimerPaused}
           onTogglePause={() => setIsTimerPaused((value) => !value)}
           onElapsedChange={setElapsedSeconds}
@@ -136,7 +168,7 @@ export default function CallScreen({
         visible={isSummaryVisible}
         durationSeconds={elapsedSeconds}
         slidesViewed={slidesViewed}
-        totalSlides={DEMO_SLIDES.length}
+        totalSlides={slides.length}
         onCancel={() => setIsSummaryVisible(false)}
         onSubmit={handleSubmitSummary}
       />
@@ -151,5 +183,19 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
+  },
+  loadingState: {
+    position: 'absolute',
+    inset: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    zIndex: 10,
+    elevation: 10,
+  },
+  loadingText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

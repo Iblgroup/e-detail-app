@@ -1,7 +1,9 @@
-import { AppBottomSheetSelect } from '@/components/ui/AppBottomSheetSelect';
 import { AppButton } from '@/components/ui/AppButton';
+import { AppSearchInput } from '@/components/ui/AppSearchInput';
 import { ScreenLayout } from '@/components/ui/ScreenLayout';
 import { Colors } from '@/constants/theme';
+import { DoctorDataRow, useInfiniteDoctors } from '@/api/doctor';
+import { useAuth } from '@/providers/AuthProvider';
 import { Doctor, DoctorCard } from '@/views/planned-calls/DoctorCard';
 import { ScheduleSectionHeader } from '@/views/planned-calls/ScheduleSectionHeader';
 import { getCompletedCallIds } from '@/views/planned-calls/callCompletionStore';
@@ -9,64 +11,17 @@ import { consumeReturnToNewDoctor } from '@/views/unplanned-calls/returnToNewDoc
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-
-const unplannedDoctors: Doctor[] = [
-  {
-    id: '4',
-    name: 'Dr. Ayesha Malik',
-    specialty: 'Dermatologist',
-    hospital: 'Skin Care Clinic',
-    lastVisit: '2024-03-05',
-  },
-  {
-    id: '5',
-    name: 'Dr. Omar Farooq',
-    specialty: 'Orthopedic Surgeon',
-    hospital: 'Metro Hospital',
-    lastVisit: '2024-02-28',
-  },
-  {
-    id: '6',
-    name: 'Dr. Nadia Ali',
-    specialty: 'Pulmonologist',
-    hospital: 'Care Medical Center',
-    lastVisit: '2024-03-12',
-    status: 'completed',
-  },
-];
-
-const doctorOptions: Doctor[] = [
-  {
-    id: '7',
-    name: 'Dr. Bilal Qureshi',
-    specialty: 'ENT Specialist',
-    hospital: 'North Medical Complex',
-    lastVisit: '2024-03-18',
-  },
-  {
-    id: '8',
-    name: 'Dr. Sana Tariq',
-    specialty: 'Gynecologist',
-    hospital: 'Women Care Hospital',
-    lastVisit: '2024-03-22',
-  },
-  {
-    id: '9',
-    name: 'Dr. Hammad Raza',
-    specialty: 'Neurologist',
-    hospital: 'Neuro Health Center',
-    lastVisit: '2024-02-19',
-  },
-  {
-    id: '10',
-    name: 'Dr. Zainab Noor',
-    specialty: 'Endocrinologist',
-    hospital: 'Life Clinic',
-    lastVisit: '2024-01-30',
-  },
-];
+import { useCallback, useDeferredValue, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 const emptyNewDoctorForm = {
   name: '',
@@ -75,23 +30,50 @@ const emptyNewDoctorForm = {
   address: '',
 };
 
-type PickerMode = 'existing' | 'new';
+function asText(value: unknown, fallback: string) {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+
+  const text = String(value).trim();
+  return text || fallback;
+}
+
+function mapDoctors(rows: DoctorDataRow[]): Doctor[] {
+  return rows.map((row) => ({
+    id: String(row.DOCTORID ?? ''),
+    name: asText(row.DOCTORNAME, 'Unknown Doctor'),
+    specialty: asText(row.SpecialtyByIkon, asText(row.SpecialtyByCommercial, 'Unknown Specialty')),
+    specialtyId: row.SpecialtyId,
+    hospital: asText(row.CITY, 'Unknown City'),
+    address: asText(row.CITY, 'Unknown City'),
+    lastVisit: 'No visit recorded',
+    teamId: row.TEAMID,
+  }));
+}
 
 export default function UnplannedCalls() {
+  const { user } = useAuth();
   const [completedCallIds, setCompletedCallIds] = useState(() => getCompletedCallIds('unplanned'));
+  const [searchQuery, setSearchQuery] = useState('');
+  const deferredSearchQuery = useDeferredValue(searchQuery.trim());
   const [addedDoctors, setAddedDoctors] = useState<Doctor[]>([]);
-  const [selectedDoctorId, setSelectedDoctorId] = useState<string>();
   const [pickerVisible, setPickerVisible] = useState(false);
-  const [pickerMode, setPickerMode] = useState<PickerMode>('existing');
   const [newDoctorForm, setNewDoctorForm] = useState(emptyNewDoctorForm);
   const [newDoctorCallCompleted, setNewDoctorCallCompleted] = useState(false);
   const [activePendingDoctorId, setActivePendingDoctorId] = useState<string>();
   const [newDoctorDrafts, setNewDoctorDrafts] = useState<Record<string, typeof emptyNewDoctorForm>>({});
+  const doctorsQuery = useInfiniteDoctors({
+    teamId: user?.teamId,
+    query: deferredSearchQuery,
+  });
 
   const handlePendingNewDoctorReturn = useCallback((pendingDoctorId?: string) => {
     if (pendingDoctorId) {
       setAddedDoctors((current) => {
-        if (current.some((doctor) => doctor.id === pendingDoctorId)) return current;
+        if (current.some((doctor) => doctor.id === pendingDoctorId)) {
+          return current;
+        }
 
         return [
           ...current,
@@ -115,7 +97,6 @@ export default function UnplannedCalls() {
     }
 
     setPickerVisible(true);
-    setPickerMode('new');
     setNewDoctorCallCompleted(true);
   }, [newDoctorDrafts]);
 
@@ -129,31 +110,39 @@ export default function UnplannedCalls() {
     }, [handlePendingNewDoctorReturn])
   );
 
-  const professionOptions = useMemo(() => {
-    const specialties = [...unplannedDoctors, ...doctorOptions, ...addedDoctors]
-      .map((doctor) => doctor.specialty?.trim())
-      .filter((specialty): specialty is string => Boolean(specialty));
-
-    return Array.from(new Set(specialties)).sort((a, b) => a.localeCompare(b));
-  }, [addedDoctors]);
-
-  const existingDoctorIds = new Set([...unplannedDoctors, ...addedDoctors].map((doctor) => doctor.id));
-  const availableDoctorOptions = doctorOptions.filter((doctor) => !existingDoctorIds.has(doctor.id));
-  const selectedDoctor = availableDoctorOptions.find((doctor) => doctor.id === selectedDoctorId);
   const isNewDoctorFormValid = Boolean(
     newDoctorForm.name.trim()
       && newDoctorForm.profession.trim()
       && newDoctorForm.hospital.trim()
       && newDoctorForm.address.trim()
   );
-  const canAddDoctor =
-    pickerMode === 'new'
-      ? (newDoctorCallCompleted && isNewDoctorFormValid)
-      : Boolean(selectedDoctor);
+
+  const doctors = useMemo(() => {
+    const fetchedDoctors = mapDoctors(doctorsQuery.data?.pages.flatMap((page) => page.data) ?? []);
+    const normalizedSearch = deferredSearchQuery.toLowerCase();
+    const filteredAddedDoctors = !normalizedSearch
+      ? addedDoctors
+      : addedDoctors.filter((doctor) =>
+          [doctor.name, doctor.specialty, doctor.hospital, doctor.address]
+            .some((value) => value?.toLowerCase().includes(normalizedSearch))
+        );
+
+    return [...filteredAddedDoctors, ...fetchedDoctors]
+      .map((doctor) => ({
+        ...doctor,
+        status:
+          doctor.status === 'completed' || completedCallIds.has(doctor.id)
+            ? 'completed' as const
+            : 'pending' as const,
+      }))
+      .sort((a, b) => Number(a.status === 'completed') - Number(b.status === 'completed'));
+  }, [addedDoctors, completedCallIds, deferredSearchQuery, doctorsQuery.data?.pages]);
+
+  const totalLoadedTeamDoctors = doctorsQuery.data?.pages.flatMap((page) => page.data).length ?? 0;
+  const totalAvailableTeamDoctors = doctorsQuery.data?.pages[0]?.totalCount ?? totalLoadedTeamDoctors;
+  const hasActiveSearch = deferredSearchQuery.length > 0;
 
   const openPicker = () => {
-    setSelectedDoctorId(availableDoctorOptions[0]?.id);
-    setPickerMode('existing');
     setNewDoctorCallCompleted(false);
     setActivePendingDoctorId(undefined);
     setNewDoctorForm(emptyNewDoctorForm);
@@ -161,7 +150,7 @@ export default function UnplannedCalls() {
   };
 
   const closePicker = (preserveDraft = true) => {
-    if (preserveDraft && pickerMode === 'new' && activePendingDoctorId) {
+    if (preserveDraft && activePendingDoctorId) {
       setNewDoctorDrafts((current) => ({
         ...current,
         [activePendingDoctorId]: newDoctorForm,
@@ -169,8 +158,6 @@ export default function UnplannedCalls() {
     }
 
     setPickerVisible(false);
-    setSelectedDoctorId(undefined);
-    setPickerMode('existing');
     setNewDoctorCallCompleted(false);
     setActivePendingDoctorId(undefined);
     setNewDoctorForm(emptyNewDoctorForm);
@@ -184,49 +171,44 @@ export default function UnplannedCalls() {
   };
 
   const addSelectedDoctor = () => {
-    if (pickerMode === 'new') {
-      if (!isNewDoctorFormValid) return;
-
-      const newDoctor: Doctor = {
-        id: activePendingDoctorId ?? `custom-${Date.now()}`,
-        name: newDoctorForm.name.trim(),
-        specialty: newDoctorForm.profession.trim(),
-        hospital: newDoctorForm.hospital.trim(),
-        address: newDoctorForm.address.trim(),
-        lastVisit: '2026-04-20',
-        status: 'completed',
-        isNewDoctor: true,
-      };
-
-      setAddedDoctors((current) => {
-        if (!activePendingDoctorId) return [...current, newDoctor];
-
-        return current.map((doctor) =>
-          doctor.id === activePendingDoctorId ? newDoctor : doctor
-        );
-      });
-      if (activePendingDoctorId) {
-        setNewDoctorDrafts((current) => {
-          const next = { ...current };
-          delete next[activePendingDoctorId];
-          return next;
-        });
-      }
-      setNewDoctorForm(emptyNewDoctorForm);
-      closePicker(false);
+    if (!isNewDoctorFormValid) {
       return;
     }
 
-    if (!selectedDoctor) return;
+    const newDoctor: Doctor = {
+      id: activePendingDoctorId ?? `custom-${Date.now()}`,
+      name: newDoctorForm.name.trim(),
+      specialty: newDoctorForm.profession.trim(),
+      hospital: newDoctorForm.hospital.trim(),
+      address: newDoctorForm.address.trim(),
+      lastVisit: 'No visit recorded',
+      status: 'completed',
+      isNewDoctor: true,
+    };
 
-    setAddedDoctors((current) => [...current, selectedDoctor]);
-    closePicker();
+    setAddedDoctors((current) => {
+      if (!activePendingDoctorId) {
+        return [newDoctor, ...current];
+      }
+
+      return current.map((doctor) =>
+        doctor.id === activePendingDoctorId ? newDoctor : doctor
+      );
+    });
+
+    if (activePendingDoctorId) {
+      setNewDoctorDrafts((current) => {
+        const next = { ...current };
+        delete next[activePendingDoctorId];
+        return next;
+      });
+    }
+
+    closePicker(false);
   };
 
   const startNewDoctorCall = () => {
     setPickerVisible(false);
-    setSelectedDoctorId(undefined);
-    setPickerMode('new');
     setNewDoctorCallCompleted(false);
     setActivePendingDoctorId(undefined);
     setNewDoctorForm(emptyNewDoctorForm);
@@ -242,136 +224,125 @@ export default function UnplannedCalls() {
     });
   };
 
-  const doctors = [...unplannedDoctors, ...addedDoctors]
-    .map((doctor) => ({
-      ...doctor,
-      status:
-        doctor.status === 'completed' || completedCallIds.has(doctor.id)
-          ? 'completed' as const
-          : 'pending' as const,
-    }))
-    .sort((a, b) => Number(a.status === 'completed') - Number(b.status === 'completed'));
+  const handleLoadMore = () => {
+    if (!doctorsQuery.hasNextPage || doctorsQuery.isFetchingNextPage) {
+      return;
+    }
+
+    void doctorsQuery.fetchNextPage();
+  };
+
+  const renderFooter = () => {
+    if (!doctorsQuery.isFetchingNextPage) {
+      return <View style={styles.footerSpacer} />;
+    }
+
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator color={Colors.primary} />
+        <Text style={styles.footerText}>Loading more doctors...</Text>
+      </View>
+    );
+  };
 
   return (
-    <ScreenLayout title="Unplanned Calls" notificationCount={1}>
-      <View style={styles.section}>
-        <ScheduleSectionHeader
-          title="Available Doctors"
-          action={
-            <AppButton
-              label="Add Doctor"
-              onPress={openPicker}
-              icon={<Ionicons name="add" size={20} color={Colors.textOnDark} />}
-              style={styles.addButton}
-              textStyle={styles.addButtonText}
-            />
-          }
-        />
-        <View style={styles.list}>
-          {doctors.map((doctor) => (
-            <DoctorCard
-              key={doctor.id}
-              doctor={doctor}
-              callType="unplanned"
-              onPress={(selectedDoctor) => {
-                if (!selectedDoctor.isNewDoctorPending) return false;
+    <ScreenLayout title="Unplanned Calls" notificationCount={1} scrollable={false}>
+      <FlatList
+        data={doctors}
+        keyExtractor={(doctor) => doctor.id}
+        renderItem={({ item }) => (
+          <DoctorCard
+            doctor={item}
+            callType="unplanned"
+            onPress={(selectedDoctor) => {
+              if (!selectedDoctor.isNewDoctorPending) return false;
 
-                setActivePendingDoctorId(selectedDoctor.id);
-                setPickerVisible(true);
-                setPickerMode('new');
-                setNewDoctorCallCompleted(true);
-                setNewDoctorForm(newDoctorDrafts[selectedDoctor.id] ?? emptyNewDoctorForm);
-                return true;
-              }}
+              setActivePendingDoctorId(selectedDoctor.id);
+              setPickerVisible(true);
+              setNewDoctorCallCompleted(true);
+              setNewDoctorForm(newDoctorDrafts[selectedDoctor.id] ?? emptyNewDoctorForm);
+              return true;
+            }}
+          />
+        )}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.35}
+        ListHeaderComponent={
+          <View style={styles.section}>
+            <ScheduleSectionHeader
+              title="Available Doctors"
+              action={
+                <AppButton
+                  label="Add Doctor"
+                  onPress={openPicker}
+                  icon={<Ionicons name="add" size={20} color={Colors.textOnDark} />}
+                  style={styles.addButton}
+                  textStyle={styles.addButtonText}
+                />
+              }
             />
-          ))}
-        </View>
-      </View>
+
+            {doctorsQuery.isLoading ? (
+              <View style={styles.stateCard}>
+                <ActivityIndicator color={Colors.primary} />
+                <Text style={styles.stateTitle}>Loading team doctors...</Text>
+                <Text style={styles.stateText}>
+                  Fetching all doctors available for the {user?.team ?? 'current'} team.
+                </Text>
+              </View>
+            ) : null}
+
+            {doctorsQuery.isError ? (
+              <View style={styles.stateCard}>
+                <Text style={styles.stateTitle}>Unable to load team doctors</Text>
+                <Text style={styles.stateText}>
+                  {doctorsQuery.error instanceof Error ? doctorsQuery.error.message : 'Unknown error'}
+                </Text>
+              </View>
+            ) : null}
+
+            {!doctorsQuery.isLoading && !doctorsQuery.isError && doctors.length > 0 ? (
+              <Text style={styles.summaryText}>
+                Showing {totalLoadedTeamDoctors} of {totalAvailableTeamDoctors} team doctors for {user?.team ?? 'this team'}.
+              </Text>
+            ) : null}
+
+            <AppSearchInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search team doctors by name, city, or specialty"
+            />
+
+            {hasActiveSearch ? (
+              <Text style={styles.searchHint}>
+                Search results for "{deferredSearchQuery}"
+              </Text>
+            ) : null}
+
+            {!doctorsQuery.isLoading && !doctorsQuery.isError && doctors.length === 0 ? (
+              <View style={styles.stateCard}>
+                <Text style={styles.stateTitle}>No doctors available</Text>
+                <Text style={styles.stateText}>
+                  We did not find team doctor records for {user?.team ?? 'this team'} yet.
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        }
+        ListFooterComponent={renderFooter}
+      />
 
       <Modal visible={pickerVisible} transparent animationType="fade" onRequestClose={closePicker}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Add Unplanned Doctor</Text>
             <Text style={styles.modalSubtitle}>
-              Select a doctor or create a new one for your unplanned call list.
+              Start an unplanned call, then complete the new doctor details after the call.
             </Text>
 
-            <View style={styles.modeRow}>
-              <Pressable
-                onPress={() => {
-                  setPickerMode('existing');
-                  setNewDoctorCallCompleted(false);
-                  setActivePendingDoctorId(undefined);
-                }}
-                style={[styles.modeButton, pickerMode === 'existing' && styles.modeButtonActive]}
-              >
-                <Text style={[styles.modeText, pickerMode === 'existing' && styles.modeTextActive]}>
-                  Existing
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  setPickerMode('new');
-                  setNewDoctorCallCompleted(Boolean(activePendingDoctorId));
-                  if (activePendingDoctorId) {
-                    setNewDoctorForm(newDoctorDrafts[activePendingDoctorId] ?? emptyNewDoctorForm);
-                  }
-                }}
-                style={[
-                  styles.modeButton,
-                  styles.hiddenModeButton,
-                  pickerMode === 'new' && styles.modeButtonActive,
-                ]}
-              >
-                <Text style={[styles.modeText, pickerMode === 'new' && styles.modeTextActive]}>
-                  New Doctor
-                </Text>
-              </Pressable>
-            </View>
-
-            {pickerMode === 'existing' ? (
-              <View style={styles.dropdownBox}>
-                <View style={styles.dropdownHeader}>
-                  <Text style={styles.dropdownLabel}>
-                    {selectedDoctor?.name ?? 'No doctors available'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color={Colors.textMuted} />
-                </View>
-
-                <ScrollView
-                  style={styles.optionsScroll}
-                  contentContainerStyle={styles.optionsList}
-                  nestedScrollEnabled
-                  showsVerticalScrollIndicator={false}
-                >
-                  {availableDoctorOptions.map((doctor) => {
-                    const selected = doctor.id === selectedDoctorId;
-
-                    return (
-                      <Pressable
-                        key={doctor.id}
-                        onPress={() => setSelectedDoctorId(doctor.id)}
-                        style={[styles.optionRow, selected && styles.optionRowSelected]}
-                      >
-                        <View>
-                          <Text style={styles.optionName}>{doctor.name}</Text>
-                          <Text style={styles.optionMeta}>
-                            {doctor.specialty} - {doctor.hospital}
-                          </Text>
-                        </View>
-                        {selected && (
-                          <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
-                        )}
-                      </Pressable>
-                    );
-                  })}
-
-                  {availableDoctorOptions.length === 0 && (
-                    <Text style={styles.emptyText}>All available doctors have already been added.</Text>
-                  )}
-                </ScrollView>
-              </View>
-            ) : newDoctorCallCompleted ? (
+            {newDoctorCallCompleted ? (
               <View style={styles.form}>
                 <TextInput
                   value={newDoctorForm.name}
@@ -380,14 +351,12 @@ export default function UnplannedCalls() {
                   placeholder="Doctor name"
                   placeholderTextColor={Colors.textMuted}
                 />
-                <AppBottomSheetSelect
-                  options={professionOptions}
+                <TextInput
                   value={newDoctorForm.profession}
-                  onChange={(value) => updateNewDoctorField('profession', value)}
+                  onChangeText={(value) => updateNewDoctorField('profession', value)}
+                  style={styles.input}
                   placeholder="Profession"
-                  title="Select Profession"
-                  searchPlaceholder="Search profession"
-                  emptyText="No professions available."
+                  placeholderTextColor={Colors.textMuted}
                 />
                 <TextInput
                   value={newDoctorForm.hospital}
@@ -424,26 +393,17 @@ export default function UnplannedCalls() {
                 style={styles.modalButton}
               />
               <AppButton
-                label={
-                  pickerMode === 'new'
-                    ? (newDoctorCallCompleted ? 'Add Doctor' : 'Start Doctor Call')
-                    : 'Add'
-                }
-                onPress={
-                  pickerMode === 'new'
-                    ? (newDoctorCallCompleted ? (canAddDoctor ? addSelectedDoctor : undefined) : startNewDoctorCall)
-                    : (canAddDoctor ? addSelectedDoctor : undefined)
-                }
+                label={newDoctorCallCompleted ? 'Add Doctor' : 'Start Doctor Call'}
+                onPress={newDoctorCallCompleted ? (isNewDoctorFormValid ? addSelectedDoctor : undefined) : startNewDoctorCall}
                 icon={
-                  pickerMode === 'new' && !newDoctorCallCompleted
-                    ? <Ionicons name="call-outline" size={20} color={Colors.textOnDark} />
-                    : <Ionicons name="add" size={20} color={Colors.textOnDark} />
+                  newDoctorCallCompleted
+                    ? <Ionicons name="add" size={20} color={Colors.textOnDark} />
+                    : <Ionicons name="call-outline" size={20} color={Colors.textOnDark} />
                 }
                 style={[
                   styles.modalButton,
-                  pickerMode === 'new' && !newDoctorCallCompleted && styles.startCallButton,
-                  pickerMode !== 'new' && !canAddDoctor && styles.modalButtonDisabled,
-                  pickerMode === 'new' && newDoctorCallCompleted && !canAddDoctor && styles.modalButtonDisabled,
+                  !newDoctorCallCompleted && styles.startCallButton,
+                  newDoctorCallCompleted && !isNewDoctorFormValid && styles.modalButtonDisabled,
                 ]}
               />
             </View>
@@ -455,11 +415,14 @@ export default function UnplannedCalls() {
 }
 
 const styles = StyleSheet.create({
+  content: {
+    padding: 16,
+    paddingBottom: 32,
+    gap: 10,
+  },
   section: {
     gap: 12,
-  },
-  list: {
-    gap: 10,
+    marginBottom: 10,
   },
   addButton: {
     minHeight: 34,
@@ -469,6 +432,52 @@ const styles = StyleSheet.create({
   },
   addButtonText: {
     fontSize: 14,
+  },
+  summaryText: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: Colors.textMuted,
+  },
+  searchHint: {
+    fontSize: 12,
+    color: Colors.primary,
+    fontWeight: '700',
+  },
+  stateCard: {
+    borderRadius: 16,
+    backgroundColor: Colors.surface,
+    padding: 18,
+    gap: 8,
+    alignItems: 'flex-start',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  stateTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: Colors.text,
+  },
+  stateText: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: Colors.textMuted,
+  },
+  footerLoader: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  footerText: {
+    fontSize: 13,
+    color: Colors.textMuted,
+    fontWeight: '600',
+  },
+  footerSpacer: {
+    height: 12,
   },
   modalBackdrop: {
     flex: 1,
@@ -494,91 +503,6 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontSize: 14,
     lineHeight: 18,
-  },
-  modeRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  modeButton: {
-    flex: 1,
-    minHeight: 38,
-    borderRadius: 10,
-    backgroundColor: '#EEF2F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  hiddenModeButton: {
-    display: 'none',
-  },
-  modeButtonActive: {
-    backgroundColor: Colors.primary,
-  },
-  modeText: {
-    color: Colors.textMuted,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  modeTextActive: {
-    color: Colors.textOnDark,
-  },
-  dropdownBox: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: '#F8FAFC',
-    overflow: 'hidden',
-  },
-  dropdownHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.surface,
-  },
-  dropdownLabel: {
-    color: Colors.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  optionsList: {
-    padding: 8,
-    gap: 8,
-  },
-  optionsScroll: {
-    maxHeight: 260,
-  },
-  optionRow: {
-    minHeight: 58,
-    borderRadius: 12,
-    backgroundColor: Colors.surface,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  optionRowSelected: {
-    backgroundColor: Colors.primaryLight,
-  },
-  optionName: {
-    color: Colors.text,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  optionMeta: {
-    color: Colors.textMuted,
-    fontSize: 14,
-    marginTop: 3,
-  },
-  emptyText: {
-    color: Colors.textMuted,
-    fontSize: 14,
-    padding: 12,
-    textAlign: 'center',
   },
   form: {
     gap: 10,
