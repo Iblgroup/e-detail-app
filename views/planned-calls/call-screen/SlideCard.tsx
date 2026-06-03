@@ -1,5 +1,6 @@
 import { Colors } from '@/constants/theme';
 import { Image, ImageSourcePropType, StyleSheet, Text, View } from 'react-native';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 export interface Slide {
   id: string;
@@ -20,12 +21,23 @@ export function SlideCard({ slide }: SlideCardProps) {
 
   if (shouldShowHeroImage) {
     return (
-      <View style={styles.card}>
-        <Image source={slide.image} style={styles.heroImage} resizeMode="contain" />
-        <View style={styles.heroFooter}>
-          <Text style={styles.heroBrand}>{slide.brand}</Text>
-          <Text style={styles.heroTitle}>{slide.title}</Text>
-          <Text style={styles.heroSubtitle}>{slide.subtitle}</Text>
+      <View style={[styles.card, styles.heroCard]}>
+        <View style={styles.heroImageFrame}>
+          <Image source={slide.image} style={styles.heroImage} resizeMode="contain" />
+        </View>
+
+        <View pointerEvents="none" style={styles.heroBottomGradient}>
+          <Svg width="100%" height="100%" preserveAspectRatio="none">
+            <Defs>
+              <LinearGradient id="callSlideBottomGradient" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor="rgba(2, 6, 23, 0)" />
+                <Stop offset="0.42" stopColor="rgba(2, 6, 23, 0.06)" />
+                <Stop offset="0.74" stopColor="rgba(2, 6, 23, 0.36)" />
+                <Stop offset="1" stopColor="rgba(2, 6, 23, 0.76)" />
+              </LinearGradient>
+            </Defs>
+            <Rect x="0" y="0" width="100%" height="100%" fill="url(#callSlideBottomGradient)" />
+          </Svg>
         </View>
       </View>
     );
@@ -48,9 +60,7 @@ export function SlideCard({ slide }: SlideCardProps) {
           </View>
         </View>
 
-        {slide.image && (
-          <Image source={slide.image} style={styles.image} resizeMode="cover" />
-        )}
+        {slide.image && <Image source={slide.image} style={styles.image} resizeMode="cover" />}
       </View>
     </View>
   );
@@ -59,9 +69,11 @@ export function SlideCard({ slide }: SlideCardProps) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
     overflow: 'hidden',
     flex: 1,
+  },
+  heroCard: {
+    backgroundColor: '#0F172A',
   },
   content: {
     flex: 1,
@@ -115,33 +127,19 @@ const styles = StyleSheet.create({
     width: '45%',
     height: '100%',
   },
+  heroImageFrame: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
   heroImage: {
     flex: 1,
     width: '100%',
-    backgroundColor: '#FFFFFF',
   },
-  heroFooter: {
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    gap: 4,
-  },
-  heroBrand: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.primary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  heroTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  heroSubtitle: {
-    fontSize: 13,
-    color: '#6B7280',
+  heroBottomGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 260,
   },
 });

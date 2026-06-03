@@ -51,6 +51,7 @@ export function SlideViewer({
     [slides]
   );
   const currentDuration = durations[current] ?? 1;
+  const currentSlide = slides[current];
   const slidesKey = useMemo(() => slides.map((slide) => slide.id).join('|'), [slides]);
 
   const slideTimes = useMemo(
@@ -160,40 +161,60 @@ export function SlideViewer({
         onIndexChange={goToSlide}
         style={styles.carousel}
         slideStyle={styles.slideWrapper}
+        widthRatio={1}
+        heightRatio={1}
         renderItem={({ item }) => <SlideCard slide={item} />}
       />
 
-      <View style={styles.bottomStack}>
-        <Pressable
-          onPress={onTogglePause}
-          style={[styles.pauseButton, isPaused ? styles.resumeButton : styles.pauseButtonActive]}
-        >
-          <Ionicons
-            name={isPaused ? 'play-outline' : 'pause-outline'}
-            size={18}
-            color="#FFFFFF"
-          />
-          <Text style={styles.pauseButtonLabel}>{isPaused ? 'Resume' : 'Pause'}</Text>
-        </Pressable>
-
-        <View style={styles.slideTimer}>
-          <View style={styles.slideTimerHeader}>
-            <Text style={styles.slideTimerLabel}>Slide {current + 1}/{slides.length}</Text>
-            <Text style={styles.slideTimerValue}>{formatTime(currentSlideSpentSeconds)} spent</Text>
-          </View>
-          <View style={styles.slideTimerTrack}>
-            <View style={[styles.slideTimerFill, { flex: completedSeconds }]} />
-            <View style={{ flex: Math.max(0, currentDuration - completedSeconds) }} />
+      <View style={styles.bottomOverlay}>
+        <View style={styles.sideRail}>
+          <View style={styles.slideIdentity}>
+            <Text style={styles.slideTeam} numberOfLines={1}>
+              {currentSlide?.brand ?? ''}
+            </Text>
+            <Text style={styles.slideBrand} numberOfLines={1}>
+              {currentSlide?.title ?? ''}
+            </Text>
+            <Text style={styles.slideSku} numberOfLines={2}>
+              {currentSlide?.subtitle ?? ''}
+            </Text>
           </View>
         </View>
 
-        <View style={styles.dots}>
-          {slides.map((_, i) => (
-            <Pressable key={i} onPress={() => goToSlide(i)}>
-              <View style={[styles.dot, i === current && styles.dotActive]} />
-            </Pressable>
-          ))}
+        <View style={styles.centerRail}>
+          <Pressable
+            onPress={onTogglePause}
+            style={[styles.pauseButton, isPaused ? styles.resumeButton : styles.pauseButtonActive]}
+          >
+            <Ionicons
+              name={isPaused ? 'play-outline' : 'pause-outline'}
+              size={18}
+              color="#FFFFFF"
+            />
+            <Text style={styles.pauseButtonLabel}>{isPaused ? 'Resume' : 'Pause'}</Text>
+          </Pressable>
+
+          <View style={styles.slideTimer}>
+            <View style={styles.slideTimerHeader}>
+              <Text style={styles.slideTimerLabel}>Slide {current + 1}/{slides.length}</Text>
+              <Text style={styles.slideTimerValue}>{formatTime(currentSlideSpentSeconds)} spent</Text>
+            </View>
+            <View style={styles.slideTimerTrack}>
+              <View style={[styles.slideTimerFill, { flex: completedSeconds }]} />
+              <View style={{ flex: Math.max(0, currentDuration - completedSeconds) }} />
+            </View>
+          </View>
+
+          <View style={styles.dots}>
+            {slides.map((_, i) => (
+              <Pressable key={i} onPress={() => goToSlide(i)}>
+                <View style={[styles.dot, i === current && styles.dotActive]} />
+              </Pressable>
+            ))}
+          </View>
         </View>
+
+        <View style={styles.sideRail} />
       </View>
     </View>
   );
@@ -209,22 +230,66 @@ const styles = StyleSheet.create({
   slideWrapper: {
     flex: 1,
   },
-  bottomStack: {
+  bottomOverlay: {
     position: 'absolute',
-    bottom: 12,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    gap: 14,
+    bottom: 18,
+    left: 18,
+    right: 18,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
     zIndex: 20,
     elevation: 20,
   },
+  sideRail: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: 'flex-end',
+  },
+  centerRail: {
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 12,
+  },
+  slideIdentity: {
+    gap: 2,
+    paddingBottom: 18,
+    paddingRight: 12,
+  },
+  slideTeam: {
+    color: '#BFDBFE',
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    textShadowColor: 'rgba(2, 6, 23, 0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  slideBrand: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+    lineHeight: 26,
+    textShadowColor: 'rgba(2, 6, 23, 0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
+  slideSku: {
+    color: 'rgba(255,255,255,0.86)',
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 18,
+    textShadowColor: 'rgba(2, 6, 23, 0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
   slideTimer: {
-    width: 172,
-    paddingHorizontal: 10,
+    width: 182,
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 10,
+    backgroundColor: 'rgba(15,23,42,0.42)',
     gap: 6,
     marginBottom: 2,
   },
@@ -235,7 +300,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   slideTimerLabel: {
-    color: 'rgba(255,255,255,0.68)',
+    color: 'rgba(255,255,255,0.72)',
     fontSize: 13,
     fontWeight: '700',
   },

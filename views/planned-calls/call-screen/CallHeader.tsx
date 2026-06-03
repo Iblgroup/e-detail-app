@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 interface CallHeaderProps {
   elapsedSeconds?: number;
@@ -33,6 +34,19 @@ export function CallHeader({
 
   return (
     <SafeAreaView edges={['top']} style={styles.safe}>
+      <View pointerEvents="none" style={styles.topGradient}>
+        <Svg width="100%" height="100%" preserveAspectRatio="none">
+          <Defs>
+            <LinearGradient id="callHeaderGradient" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor="rgba(2, 6, 23, 0.65)" />
+              <Stop offset="0.38" stopColor="rgba(2, 6, 23, 0.28)" />
+              <Stop offset="0.72" stopColor="rgba(2, 6, 23, 0.10)" />
+              <Stop offset="1" stopColor="rgba(2, 6, 23, 0)" />
+            </LinearGradient>
+          </Defs>
+          <Rect x="0" y="0" width="100%" height="100%" fill="url(#callHeaderGradient)" />
+        </Svg>
+      </View>
       <View style={styles.bar}>
         <View style={styles.left}>
           <View style={styles.liveBadge}>
@@ -46,15 +60,6 @@ export function CallHeader({
         </View>
 
         <View style={styles.right}>
-          <Pressable style={styles.iconBtn}>
-            <Ionicons name="chatbubble-outline" size={18} color="rgba(255,255,255,0.8)" />
-          </Pressable>
-          <Pressable style={styles.iconBtn}>
-            <Ionicons name="bookmark-outline" size={18} color="rgba(255,255,255,0.8)" />
-          </Pressable>
-          <Pressable style={styles.iconBtn}>
-            <Ionicons name="expand-outline" size={18} color="rgba(255,255,255,0.8)" />
-          </Pressable>
           <Pressable
             disabled={!canEndCall}
             style={[styles.endCallBtn, !canEndCall && styles.endCallBtnDisabled]}
@@ -71,7 +76,19 @@ export function CallHeader({
 
 const styles = StyleSheet.create({
   safe: {
-    backgroundColor: '#12121E',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 30,
+    backgroundColor: 'transparent',
+  },
+  topGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 112,
   },
   bar: {
     flexDirection: 'row',
@@ -119,15 +136,6 @@ const styles = StyleSheet.create({
   right: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  iconBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   endCallBtn: {
     flexDirection: 'row',
@@ -137,7 +145,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
-    marginLeft: 4,
   },
   endCallBtnDisabled: {
     opacity: 0.45,
