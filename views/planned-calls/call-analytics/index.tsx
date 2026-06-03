@@ -48,10 +48,33 @@ function getSlideLabel(labels: string[] | undefined, index: number) {
 }
 
 function splitSlideLabel(label: string) {
-  const [primary, ...rest] = label.split('·');
+  if (label.includes(' - ')) {
+    const [primary, ...rest] = label.split(' - ');
+    return {
+      primary: primary?.trim() || label,
+      secondary: rest.join(' - ').trim(),
+    };
+  }
+
+  if (label.includes('·')) {
+    const [primary, ...rest] = label.split('·');
+    return {
+      primary: primary?.trim() || label,
+      secondary: rest.join('·').trim(),
+    };
+  }
+
+  if (label.includes('Â·')) {
+    const [primary, ...rest] = label.split('Â·');
+    return {
+      primary: primary?.trim() || label,
+      secondary: rest.join('Â·').trim(),
+    };
+  }
+
   return {
-    primary: primary?.trim() || label,
-    secondary: rest.join('·').trim(),
+    primary: label,
+    secondary: '',
   };
 }
 
@@ -87,11 +110,7 @@ function getDoctorInterest(feedback: string, doctorInterest?: 'High' | 'Medium' 
     return 'High';
   }
 
-  if (
-    tags.some((tag) =>
-      ['Price Concern', 'Competitor Mentioned'].includes(tag)
-    )
-  ) {
+  if (tags.some((tag) => ['Price Concern', 'Competitor Mentioned'].includes(tag))) {
     return 'Medium';
   }
 
@@ -124,10 +143,12 @@ export default function CallAnalytics({
   const completion = totalSlides > 0 ? Math.round((slidesViewed / totalSlides) * 100) : 0;
   const interest = getDoctorInterest(feedback, doctorInterest);
   const feedbackToneLabel = getFeedbackToneLabel(feedback, doctorInterest);
+
   const slideTimeData = safeSlideTimes.map((seconds, index) => {
     const label = getSlideLabel(slideLabels, index);
     const parts = splitSlideLabel(label);
     return {
+      id: `${index}-${label}`,
       label,
       primaryLabel: parts.primary,
       secondaryLabel: parts.secondary,
@@ -135,16 +156,19 @@ export default function CallAnalytics({
       valueLabel: `${seconds}s`,
     };
   });
+
   const slideTimeSummary = safeSlideTimes.map((seconds, index) => {
     const label = getSlideLabel(slideLabels, index);
     const parts = splitSlideLabel(label);
     return {
+      id: `${index}-${label}`,
       label,
       primaryLabel: parts.primary,
       secondaryLabel: parts.secondary,
       valueLabel: formatSlideTime(seconds),
     };
   });
+
   const handleBackPress = () => {
     if (callType === 'unplanned' && returnToNewDoctor) {
       queueReturnToNewDoctor();
@@ -234,10 +258,10 @@ export default function CallAnalytics({
 
             <View style={styles.slideTimeList}>
               {slideTimeSummary.map((item) => (
-                <View key={item.label} style={styles.slideTimeRow}>
+                <View key={item.id} style={styles.slideTimeRow}>
                   <Text style={styles.slideTimeLabel}>
                     <Text style={styles.slideTimePrimaryLabel}>{item.primaryLabel}</Text>
-                    {item.secondaryLabel ? <Text>{` · ${item.secondaryLabel}`}</Text> : null}
+                    {item.secondaryLabel ? <Text>{` - ${item.secondaryLabel}`}</Text> : null}
                   </Text>
                   <Text style={styles.slideTimeValue}>{item.valueLabel}</Text>
                 </View>
@@ -249,18 +273,9 @@ export default function CallAnalytics({
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>Doctor&apos;s Feedback</Text>
               <View style={styles.feedbackBox}>
-                <Text style={styles.feedbackText}>&ldquo;{feedback}&rdquo;</Text>
+                <Text style={styles.feedbackText}>"{feedback}"</Text>
               </View>
             </View>
-
-            {/* <HighlightCard
-              title="Next Steps"
-              items={[
-                'Send follow-up clinical study PDF',
-                'Schedule next visit for March 15th',
-                'Drop off samples on Friday',
-              ]}
-            /> */}
           </View>
         </View>
       </ScrollView>

@@ -17,11 +17,7 @@ const DEMO_SLIDES: Slide[] = [
     title: 'Cardio-Health Pro',
     subtitle: 'The Next Generation in Cardiac Care',
     durationSeconds: 10,
-    bullets: [
-      'Once-daily dosing',
-      'High bioavailability',
-      'Patient compliance focus',
-    ],
+    bullets: ['Once-daily dosing', 'High bioavailability', 'Patient compliance focus'],
   },
   {
     id: '2',
@@ -41,11 +37,7 @@ const DEMO_SLIDES: Slide[] = [
     title: 'Safety Profile',
     subtitle: 'Well tolerated across all age groups',
     durationSeconds: 30,
-    bullets: [
-      'Minimal side effects',
-      'No known drug interactions',
-      'Safe for long-term use',
-    ],
+    bullets: ['Minimal side effects', 'No known drug interactions', 'Safe for long-term use'],
   },
 ];
 
@@ -74,7 +66,7 @@ function getAnalyticsSlideLabel(slide: Slide) {
   const title = slide.title?.trim();
   const subtitle = slide.subtitle?.trim();
 
-  if (title && subtitle) return `${title} · ${subtitle}`;
+  if (title && subtitle) return `${title} - ${subtitle}`;
   return title || subtitle || slide.brand || 'Slide';
 }
 
@@ -110,54 +102,62 @@ export default function CallScreen({
     setSlidesViewed((previous) => Math.max(previous, count));
   }, []);
 
-  const handleSubmitSummary = useCallback((summary: CallSummaryData) => {
-    if (hasEndedRef.current) return;
+  const handleSubmitSummary = useCallback(
+    (summary: CallSummaryData) => {
+      if (hasEndedRef.current) return;
 
-    hasEndedRef.current = true;
-    markCallCompleted(doctorId, callType, {
-      doctorName,
-      durationSeconds: elapsedSeconds,
-      slidesViewed,
-      totalSlides: slides.length,
-      feedback: summary.feedback || 'No feedback provided',
-      doctorInterest: summary.doctorInterest,
-      slideTimes,
-      slideLabels: slides.map(getAnalyticsSlideLabel),
-    });
-
-    if (callType === 'unplanned' && returnToNewDoctor) {
-      queueReturnToNewDoctor(doctorId ?? 'unknown');
-      router.replace('/(tabs)/unplanned-calls');
-      return;
-    }
-
-    router.replace({
-      pathname: '/call-analytics/[id]',
-      params: {
-        id: doctorId ?? 'unknown',
-        callType,
+      hasEndedRef.current = true;
+      markCallCompleted(doctorId, callType, {
         doctorName,
-        duration: String(elapsedSeconds),
-        slidesViewed: String(slidesViewed),
-        totalSlides: String(slides.length),
+        durationSeconds: elapsedSeconds,
+        slidesViewed,
+        totalSlides: slides.length,
         feedback: summary.feedback || 'No feedback provided',
         doctorInterest: summary.doctorInterest,
-        jointCall: summary.jointCall,
-        samplesProvided: summary.samplesProvided,
-        slideTimes: slideTimes.join(','),
-        slideLabels: JSON.stringify(slides.map(getAnalyticsSlideLabel)),
-        returnToNewDoctor: returnToNewDoctor ? '1' : '0',
-      },
-    });
-  }, [callType, doctorId, doctorName, elapsedSeconds, returnToNewDoctor, slideTimes, slides, slidesViewed]);
+        slideTimes,
+        slideLabels: slides.map(getAnalyticsSlideLabel),
+      });
+
+      if (callType === 'unplanned' && returnToNewDoctor) {
+        queueReturnToNewDoctor(doctorId ?? 'unknown');
+        router.replace('/(tabs)/unplanned-calls');
+        return;
+      }
+
+      router.replace({
+        pathname: '/call-analytics/[id]',
+        params: {
+          id: doctorId ?? 'unknown',
+          callType,
+          doctorName,
+          duration: String(elapsedSeconds),
+          slidesViewed: String(slidesViewed),
+          totalSlides: String(slides.length),
+          feedback: summary.feedback || 'No feedback provided',
+          doctorInterest: summary.doctorInterest,
+          jointCall: summary.jointCall,
+          samplesProvided: summary.samplesProvided,
+          slideTimes: slideTimes.join(','),
+          slideLabels: JSON.stringify(slides.map(getAnalyticsSlideLabel)),
+          returnToNewDoctor: returnToNewDoctor ? '1' : '0',
+        },
+      });
+    },
+    [
+      callType,
+      doctorId,
+      doctorName,
+      elapsedSeconds,
+      returnToNewDoctor,
+      slideTimes,
+      slides,
+      slidesViewed,
+    ]
+  );
 
   return (
     <View style={styles.screen}>
-      <CallHeader
-        elapsedSeconds={elapsedSeconds}
-        canEndCall
-        onEndCall={handleRequestEndCall}
-      />
+      <CallHeader elapsedSeconds={elapsedSeconds} canEndCall onEndCall={handleRequestEndCall} />
       <View style={styles.body}>
         {hasForcingContext && forcingSlidesQuery.isLoading ? (
           <View style={styles.loadingState}>

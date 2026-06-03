@@ -58,12 +58,13 @@ export function AppBarChart({
           )}
 
           <View style={[styles.barsRow, { height }]}>
-            {data.map((item) => {
+            {data.map((item, index) => {
               const rawHeight = (item.value / max) * height;
-              const barHeight = item.value > 0 ? Math.max(minVisibleHeight, rawHeight) : minVisibleHeight;
+              const barHeight =
+                item.value > 0 ? Math.max(minVisibleHeight, rawHeight) : minVisibleHeight;
 
               return (
-                <View key={item.label} style={styles.barColumn}>
+                <View key={`${item.label}-${index}`} style={styles.barColumn}>
                   <View style={styles.barSlot}>
                     <View
                       style={[
@@ -88,12 +89,14 @@ export function AppBarChart({
           {data.map((item, index) => (
             <View key={`${item.label}-${index}`} style={styles.labelColumn}>
               {showValueLabels && (
-                <Text style={styles.valueLabel}>{item.valueLabel ?? valueFormatter(item.value)}</Text>
+                <Text style={styles.valueLabel}>
+                  {item.valueLabel ?? valueFormatter(item.value)}
+                </Text>
               )}
               {item.primaryLabel ? (
                 <Text style={styles.label}>
                   <Text style={styles.primaryLabel}>{item.primaryLabel}</Text>
-                  {item.secondaryLabel ? <Text>{` · ${item.secondaryLabel}`}</Text> : null}
+                  {item.secondaryLabel ? <Text>{` - ${item.secondaryLabel}`}</Text> : null}
                 </Text>
               ) : (
                 <Text style={styles.label}>{item.label}</Text>
