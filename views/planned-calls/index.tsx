@@ -23,7 +23,7 @@ function mapDoctors(rows: DoctorDataRow[]): Doctor[] {
   return rows.map((row) => ({
     id: String(row.DOCTORID ?? ''),
     name: asText(row.DOCTORNAME, 'Unknown Doctor'),
-    specialty: asText(row.SpecialtyByIkon, asText(row.SpecialtyByCommercial, 'Unknown Specialty')),
+    specialty: asText(row.SpecialtyByCommercial, asText(row.SpecialtyByIkon, 'Unknown Specialty')),
     specialtyId: row.SpecialtyId,
     hospital: asText(row.CITY, 'Unknown City'),
     address: asText(row.CITY, 'Unknown City'),
