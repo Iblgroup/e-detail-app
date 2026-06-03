@@ -3,7 +3,7 @@ import { API_BASE_URL } from '@/config/api-base-url';
 
 if (!API_BASE_URL) {
   console.warn(
-    'No API base URL is configured. Set EXPO_PUBLIC_API_BASE_URL for deployed builds, or EXPO_PUBLIC_LOCAL_API_BASE_URL for local web overrides.'
+    'No API base URL is configured. Set EXPO_PUBLIC_API_BASE_URL for deployed builds, EXPO_PUBLIC_LOCAL_API_BASE_URL for local web, or EXPO_PUBLIC_NATIVE_API_BASE_URL for Metro on a device if needed.'
   );
 }
 

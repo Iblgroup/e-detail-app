@@ -80,7 +80,7 @@ export default function Dashboard() {
     ? `${teamQuery.data.count} records returned from /master-data/teams`
     : API_BASE_URL
       ? 'Waiting for the first successful response.'
-      : 'Set EXPO_PUBLIC_API_BASE_URL for deployed builds or EXPO_PUBLIC_LOCAL_API_BASE_URL for local web.';
+      : 'Set EXPO_PUBLIC_API_BASE_URL for deployed builds, EXPO_PUBLIC_LOCAL_API_BASE_URL for local web, or EXPO_PUBLIC_NATIVE_API_BASE_URL for Metro on a phone if needed.';
 
   const profileName = asText(repProfile?.MIE_NAME, user?.name ?? 'Medical Rep');
   const profileTeam = asText(repProfile?.TEAMNAME, user?.team ?? 'Unknown team');
