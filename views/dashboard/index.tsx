@@ -1,6 +1,7 @@
 import { useGetFieldForceHierarchy } from '@/api/master-data';
 import { AppButton } from '@/components/ui/AppButton';
 import { ScreenLayout } from '@/components/ui/ScreenLayout';
+import { API_BASE_URL } from '@/config/api-base-url';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/providers/AuthProvider';
 import { Ionicons } from '@expo/vector-icons';
@@ -77,9 +78,9 @@ export default function Dashboard() {
 
   const teamApiMeta = teamQuery.data
     ? `${teamQuery.data.count} records returned from /master-data/teams`
-    : process.env.EXPO_PUBLIC_API_BASE_URL
+    : API_BASE_URL
       ? 'Waiting for the first successful response.'
-      : 'Set EXPO_PUBLIC_API_BASE_URL to reach e-detailing-be.';
+      : 'Set EXPO_PUBLIC_API_BASE_URL for deployed builds or EXPO_PUBLIC_LOCAL_API_BASE_URL for local web.';
 
   const profileName = asText(repProfile?.MIE_NAME, user?.name ?? 'Medical Rep');
   const profileTeam = asText(repProfile?.TEAMNAME, user?.team ?? 'Unknown team');
@@ -169,7 +170,7 @@ export default function Dashboard() {
           <Text style={styles.apiStatusTitle}>{teamApiStatus}</Text>
           <Text style={styles.apiStatusMeta}>{teamApiMeta}</Text>
           <Text style={styles.apiStatusMeta}>
-            Base URL: {process.env.EXPO_PUBLIC_API_BASE_URL || 'Not configured'}
+            Base URL: {API_BASE_URL || 'Not configured'}
           </Text>
           {teamQuery.isLoading || teamQuery.isFetching ? (
             <ActivityIndicator color={Colors.primary} />

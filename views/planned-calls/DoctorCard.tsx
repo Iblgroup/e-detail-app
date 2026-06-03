@@ -37,6 +37,7 @@ export function DoctorCard({ doctor, callType = 'planned', onPress }: DoctorCard
     feedback: 'Doctor responded positively and requested a follow-up discussion.',
     doctorInterest: 'High',
     slideTimes: [53, 8, 1],
+    slideLabels: ['Brand 1', 'Brand 2', 'Brand 3'],
   });
 
   const handlePress = () => {
@@ -58,6 +59,7 @@ export function DoctorCard({ doctor, callType = 'planned', onPress }: DoctorCard
           feedback: report.feedback,
           doctorInterest: report.doctorInterest,
           slideTimes: report.slideTimes.join(','),
+          slideLabels: JSON.stringify(report.slideLabels ?? []),
         },
       });
       return;

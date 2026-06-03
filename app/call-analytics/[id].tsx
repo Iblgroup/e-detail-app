@@ -32,6 +32,20 @@ function parseSlideTimes(value: string | string[] | undefined) {
     .filter((item) => Number.isFinite(item));
 }
 
+function parseSlideLabels(value: string | string[] | undefined) {
+  const rawValue = Array.isArray(value) ? value[0] : value;
+  if (!rawValue) return [];
+
+  try {
+    const parsed = JSON.parse(rawValue);
+    return Array.isArray(parsed)
+      ? parsed.map((item) => String(item)).filter(Boolean)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function CallAnalyticsRoute() {
   const params = useLocalSearchParams<{
     id: string;
@@ -41,6 +55,7 @@ export default function CallAnalyticsRoute() {
     feedback?: string;
     doctorInterest?: 'High' | 'Medium' | 'Low';
     slideTimes?: string;
+    slideLabels?: string;
     callType?: CallType;
     doctorName?: string;
     returnToNewDoctor?: string;
@@ -62,6 +77,7 @@ export default function CallAnalyticsRoute() {
       feedback={params.feedback || 'No feedback provided'}
       doctorInterest={params.doctorInterest}
       slideTimes={parseSlideTimes(params.slideTimes)}
+      slideLabels={parseSlideLabels(params.slideLabels)}
       returnToNewDoctor={returnToNewDoctor}
     />
   );

@@ -11,6 +11,7 @@ export interface CompletedCallReport {
   feedback: string;
   doctorInterest?: 'High' | 'Medium' | 'Low';
   slideTimes: number[];
+  slideLabels?: string[];
 }
 
 function getCallKey(callType: CallType, doctorId: string) {

@@ -70,6 +70,14 @@ function mapForcingSlides(slides: DoctorCallSlide[]): Slide[] {
   }));
 }
 
+function getAnalyticsSlideLabel(slide: Slide) {
+  const title = slide.title?.trim();
+  const subtitle = slide.subtitle?.trim();
+
+  if (title && subtitle) return `${title} · ${subtitle}`;
+  return title || subtitle || slide.brand || 'Slide';
+}
+
 export default function CallScreen({
   doctorId,
   callType = 'planned',
@@ -114,6 +122,7 @@ export default function CallScreen({
       feedback: summary.feedback || 'No feedback provided',
       doctorInterest: summary.doctorInterest,
       slideTimes,
+      slideLabels: slides.map(getAnalyticsSlideLabel),
     });
 
     if (callType === 'unplanned' && returnToNewDoctor) {
@@ -136,10 +145,11 @@ export default function CallScreen({
         jointCall: summary.jointCall,
         samplesProvided: summary.samplesProvided,
         slideTimes: slideTimes.join(','),
+        slideLabels: JSON.stringify(slides.map(getAnalyticsSlideLabel)),
         returnToNewDoctor: returnToNewDoctor ? '1' : '0',
       },
     });
-  }, [callType, doctorId, doctorName, elapsedSeconds, returnToNewDoctor, slideTimes, slides.length, slidesViewed]);
+  }, [callType, doctorId, doctorName, elapsedSeconds, returnToNewDoctor, slideTimes, slides, slidesViewed]);
 
   return (
     <View style={styles.screen}>

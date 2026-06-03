@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import axios from '@/config/axios';
 import { ApiEndpoints } from '@/api/endpoints';
+import { API_BASE_URL } from '@/config/api-base-url';
 
 export interface ForcingContentRow {
   team_id: number;
@@ -8,6 +9,7 @@ export interface ForcingContentRow {
   spec_id: number;
   specility_name: string;
   sku_name: string;
+  brand_name?: string;
   url: string;
   status: string;
   forcing: number | null;
@@ -35,14 +37,12 @@ function parseDurationSeconds(duration: string | null | undefined) {
 }
 
 function normalizeAssetUrl(url: string) {
-  const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
-
-  if (!apiBaseUrl || !url) {
+  if (!API_BASE_URL || !url) {
     return url;
   }
 
   try {
-    const apiOrigin = new URL(apiBaseUrl).origin;
+    const apiOrigin = new URL(API_BASE_URL).origin;
     const assetUrl = new URL(url);
 
     if (assetUrl.hostname === 'localhost' || assetUrl.hostname === '127.0.0.1') {
@@ -77,6 +77,40 @@ export interface DoctorCallSlide {
   image?: { uri: string };
 }
 
+function numericPriority(value: number | null | undefined) {
+  return Number.isFinite(Number(value)) ? Number(value) : Number.MAX_SAFE_INTEGER;
+}
+
+function sortForcingRows(rows: ForcingContentRow[]) {
+  const groupPriorityBySku = new Map<string, number>();
+
+  rows.forEach((row) => {
+    const priority = numericPriority(row.forcing);
+    const current = groupPriorityBySku.get(row.sku_name);
+    if (current == null || priority < current) {
+      groupPriorityBySku.set(row.sku_name, priority);
+    }
+  });
+
+  return [...rows].sort((left, right) => {
+    const leftGroup = groupPriorityBySku.get(left.sku_name) ?? Number.MAX_SAFE_INTEGER;
+    const rightGroup = groupPriorityBySku.get(right.sku_name) ?? Number.MAX_SAFE_INTEGER;
+    if (leftGroup !== rightGroup) {
+      return leftGroup - rightGroup;
+    }
+
+    const leftPriority = numericPriority(left.forcing);
+    const rightPriority = numericPriority(right.forcing);
+    if (leftPriority !== rightPriority) {
+      return leftPriority - rightPriority;
+    }
+
+    const leftUrl = left.url ?? '';
+    const rightUrl = right.url ?? '';
+    return leftUrl.localeCompare(rightUrl);
+  });
+}
+
 export const useForcingSlides = ({ teamId, doctorSpecId }: ForcingContentParams) => {
   return useQuery({
     queryKey: ['forcing-content', teamId ?? 'no-team', doctorSpecId ?? 'no-spec'],
@@ -84,11 +118,12 @@ export const useForcingSlides = ({ teamId, doctorSpecId }: ForcingContentParams)
     enabled: Boolean(teamId && doctorSpecId),
     staleTime: 5 * 60 * 1000,
     select: (response): DoctorCallSlide[] =>
-      response.data.map((row, index) => ({
+      sortForcingRows(response.data)
+        .map((row, index) => ({
         id: `${row.sku_name}-${row.forcing ?? index}-${index}`,
         brand: row.team_name || 'Searle Pharmaceuticals',
-        title: row.sku_name || 'Forcing Content',
-        subtitle: row.specility_name || 'Doctor Call',
+        title: row.brand_name || row.sku_name || 'Forcing Content',
+        subtitle: row.sku_name || row.specility_name || 'Doctor Call',
         bullets: [],
         durationSeconds: parseDurationSeconds(row.duration),
         image: { uri: normalizeAssetUrl(row.url) },

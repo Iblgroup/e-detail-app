@@ -5,6 +5,8 @@ export interface BarChartDataPoint {
   label: string;
   value: number;
   valueLabel?: string;
+  primaryLabel?: string;
+  secondaryLabel?: string;
 }
 
 interface AppBarChartProps {
@@ -83,12 +85,19 @@ export function AppBarChart({
       <View style={styles.labelsRow}>
         {showYAxis && <View style={styles.axisLabelSpacer} />}
         <View style={styles.dataLabelsRow}>
-          {data.map((item) => (
-            <View key={item.label} style={styles.labelColumn}>
+          {data.map((item, index) => (
+            <View key={`${item.label}-${index}`} style={styles.labelColumn}>
               {showValueLabels && (
                 <Text style={styles.valueLabel}>{item.valueLabel ?? valueFormatter(item.value)}</Text>
               )}
-              <Text style={styles.label}>{item.label}</Text>
+              {item.primaryLabel ? (
+                <Text style={styles.label}>
+                  <Text style={styles.primaryLabel}>{item.primaryLabel}</Text>
+                  {item.secondaryLabel ? <Text>{` · ${item.secondaryLabel}`}</Text> : null}
+                </Text>
+              ) : (
+                <Text style={styles.label}>{item.label}</Text>
+              )}
             </View>
           ))}
         </View>
@@ -181,5 +190,10 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontSize: 13,
     fontWeight: '500',
+    textAlign: 'center',
+  },
+  primaryLabel: {
+    color: Colors.text,
+    fontWeight: '800',
   },
 });

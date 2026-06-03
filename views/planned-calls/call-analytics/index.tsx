@@ -17,6 +17,7 @@ interface CallAnalyticsProps {
   feedback: string;
   doctorInterest?: 'High' | 'Medium' | 'Low';
   slideTimes: number[];
+  slideLabels?: string[];
   returnToNewDoctor?: boolean;
 }
 
@@ -40,6 +41,18 @@ function formatSlideTime(seconds: number) {
 
 function getBrandLabel(index: number) {
   return `Brand ${index + 1}`;
+}
+
+function getSlideLabel(labels: string[] | undefined, index: number) {
+  return labels?.[index] || getBrandLabel(index);
+}
+
+function splitSlideLabel(label: string) {
+  const [primary, ...rest] = label.split('·');
+  return {
+    primary: primary?.trim() || label,
+    secondary: rest.join('·').trim(),
+  };
 }
 
 function parseFeedbackTags(feedback: string) {
@@ -103,6 +116,7 @@ export default function CallAnalytics({
   feedback,
   doctorInterest,
   slideTimes,
+  slideLabels,
   returnToNewDoctor = false,
 }: CallAnalyticsProps) {
   const safeSlideTimes =
@@ -110,15 +124,27 @@ export default function CallAnalytics({
   const completion = totalSlides > 0 ? Math.round((slidesViewed / totalSlides) * 100) : 0;
   const interest = getDoctorInterest(feedback, doctorInterest);
   const feedbackToneLabel = getFeedbackToneLabel(feedback, doctorInterest);
-  const slideTimeData = safeSlideTimes.map((seconds, index) => ({
-    label: getBrandLabel(index),
-    value: seconds,
-    valueLabel: `${seconds}s`,
-  }));
-  const slideTimeSummary = safeSlideTimes.map((seconds, index) => ({
-    label: getBrandLabel(index),
-    valueLabel: formatSlideTime(seconds),
-  }));
+  const slideTimeData = safeSlideTimes.map((seconds, index) => {
+    const label = getSlideLabel(slideLabels, index);
+    const parts = splitSlideLabel(label);
+    return {
+      label,
+      primaryLabel: parts.primary,
+      secondaryLabel: parts.secondary,
+      value: seconds,
+      valueLabel: `${seconds}s`,
+    };
+  });
+  const slideTimeSummary = safeSlideTimes.map((seconds, index) => {
+    const label = getSlideLabel(slideLabels, index);
+    const parts = splitSlideLabel(label);
+    return {
+      label,
+      primaryLabel: parts.primary,
+      secondaryLabel: parts.secondary,
+      valueLabel: formatSlideTime(seconds),
+    };
+  });
   const handleBackPress = () => {
     if (callType === 'unplanned' && returnToNewDoctor) {
       queueReturnToNewDoctor();
@@ -209,7 +235,10 @@ export default function CallAnalytics({
             <View style={styles.slideTimeList}>
               {slideTimeSummary.map((item) => (
                 <View key={item.label} style={styles.slideTimeRow}>
-                  <Text style={styles.slideTimeLabel}>{item.label}</Text>
+                  <Text style={styles.slideTimeLabel}>
+                    <Text style={styles.slideTimePrimaryLabel}>{item.primaryLabel}</Text>
+                    {item.secondaryLabel ? <Text>{` · ${item.secondaryLabel}`}</Text> : null}
+                  </Text>
                   <Text style={styles.slideTimeValue}>{item.valueLabel}</Text>
                 </View>
               ))}
@@ -380,6 +409,10 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontSize: 14,
     fontWeight: '600',
+    flex: 1,
+  },
+  slideTimePrimaryLabel: {
+    fontWeight: '800',
   },
   slideTimeValue: {
     color: Colors.primary,

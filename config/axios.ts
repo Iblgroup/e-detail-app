@@ -1,9 +1,10 @@
 import Axios from 'axios';
-
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+import { API_BASE_URL } from '@/config/api-base-url';
 
 if (!API_BASE_URL) {
-  console.warn('EXPO_PUBLIC_API_BASE_URL is not defined. API requests will fail until it is set.');
+  console.warn(
+    'No API base URL is configured. Set EXPO_PUBLIC_API_BASE_URL for deployed builds, or EXPO_PUBLIC_LOCAL_API_BASE_URL for local web overrides.'
+  );
 }
 
 const axios = Axios.create({
