@@ -189,10 +189,11 @@ export default function CallScreen({
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#12121E',
+    backgroundColor: '#FFFFFF',
   },
   body: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   loadingState: {
     position: 'absolute',

@@ -47,6 +47,7 @@ export function SlideCard({ slide }: SlideCardProps) {
   const shouldShowHeroImage = Boolean(slide.image) && slide.bullets.length === 0;
   const isWeb = Platform.OS === 'web';
   const imageUri = getImageUri(slide.image);
+  const heroGradientHeight = isWeb ? 260 : 180;
 
   if (shouldShowHeroImage) {
     return (
@@ -59,14 +60,14 @@ export function SlideCard({ slide }: SlideCardProps) {
           )}
         </View>
 
-        <View pointerEvents="none" style={styles.heroBottomGradient}>
+        <View pointerEvents="none" style={[styles.heroBottomGradient, { height: heroGradientHeight }]}>
           <Svg width="100%" height="100%" preserveAspectRatio="none">
             <Defs>
               <LinearGradient id="callSlideBottomGradient" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor="rgba(2, 6, 23, 0)" />
-                <Stop offset="0.42" stopColor="rgba(2, 6, 23, 0.06)" />
-                <Stop offset="0.74" stopColor="rgba(2, 6, 23, 0.36)" />
-                <Stop offset="1" stopColor="rgba(2, 6, 23, 0.76)" />
+                <Stop offset="0" stopColor="#020617" stopOpacity={0} />
+                <Stop offset="0.42" stopColor="#020617" stopOpacity={isWeb ? 0.06 : 0.02} />
+                <Stop offset="0.74" stopColor="#020617" stopOpacity={isWeb ? 0.36 : 0.08} />
+                <Stop offset="1" stopColor="#020617" stopOpacity={isWeb ? 0.76 : 0.16} />
               </LinearGradient>
             </Defs>
             <Rect x="0" y="0" width="100%" height="100%" fill="url(#callSlideBottomGradient)" />
@@ -114,7 +115,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   heroCard: {
-    backgroundColor: '#0F172A',
+    backgroundColor: '#FFFFFF',
   },
   content: {
     flex: 1,
@@ -187,6 +188,5 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: 260,
   },
 });

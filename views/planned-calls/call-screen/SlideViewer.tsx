@@ -223,12 +223,15 @@ export function SlideViewer({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   carousel: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   slideWrapper: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   bottomOverlay: {
     position: 'absolute',
@@ -253,8 +256,13 @@ const styles = StyleSheet.create({
   },
   slideIdentity: {
     gap: 2,
-    paddingBottom: 18,
-    paddingRight: 12,
+    maxWidth: 220,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 18,
+    marginRight: 12,
+    borderRadius: 18,
+    backgroundColor: 'rgba(15, 23, 42, 0.64)',
   },
   slideTeam: {
     color: '#BFDBFE',
