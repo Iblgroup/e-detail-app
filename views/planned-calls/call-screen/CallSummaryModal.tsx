@@ -1,7 +1,8 @@
 import { AppButton } from '@/components/ui/AppButton';
 import { Colors } from '@/constants/theme';
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export interface CallSummaryData {
   feedback: string;
@@ -49,6 +50,9 @@ export function CallSummaryModal({
   onCancel,
   onSubmit,
 }: CallSummaryModalProps) {
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const isLandscape = width > height;
   const [jointCall, setJointCall] = useState('No');
   const [samplesProvided, setSamplesProvided] = useState('No');
   const [doctorInterest, setDoctorInterest] = useState<'High' | 'Medium' | 'Low'>('Medium');
@@ -73,9 +77,38 @@ export function CallSummaryModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <View style={styles.backdrop}>
-        <View style={styles.sheet}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onCancel}
+      statusBarTranslucent
+      navigationBarTranslucent
+    >
+      <View
+        style={[
+          styles.backdrop,
+          isLandscape && styles.backdropLandscape,
+          {
+            paddingTop: Math.max(insets.top, isLandscape ? 14 : 22),
+            paddingBottom: Math.max(insets.bottom, isLandscape ? 14 : 22),
+            paddingLeft: Math.max(insets.left, isLandscape ? 16 : 22),
+            paddingRight: Math.max(insets.right, isLandscape ? 16 : 22),
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.sheet,
+            isLandscape && styles.sheetLandscape,
+            {
+              maxHeight: height - Math.max(insets.top, isLandscape ? 14 : 22) - Math.max(insets.bottom, isLandscape ? 14 : 22),
+              maxWidth: isLandscape
+                ? Math.min(width - Math.max(insets.left, 16) - Math.max(insets.right, 16), 820)
+                : Math.min(width - Math.max(insets.left, 22) - Math.max(insets.right, 22), 510),
+            },
+          ]}
+        >
           <View style={styles.header}>
             <Text style={styles.title}>Call Summary</Text>
             <Text style={styles.subtitle}>Please complete the call report</Text>
@@ -83,11 +116,11 @@ export function CallSummaryModal({
 
           <ScrollView
             style={styles.scrollArea}
-            contentContainerStyle={styles.content}
+            contentContainerStyle={[styles.content, isLandscape && styles.contentLandscape]}
             showsVerticalScrollIndicator={false}
             bounces={false}
           >
-            <View style={styles.statsRow}>
+            <View style={[styles.statsRow, isLandscape && styles.statsRowLandscape]}>
               <View style={styles.statBox}>
                 <Text style={styles.statLabel}>Duration</Text>
                 <Text style={styles.statValue}>{formatDuration(durationSeconds)}</Text>
@@ -101,7 +134,7 @@ export function CallSummaryModal({
             </View>
 
             <Text style={styles.fieldLabel}>Was this a joint call?</Text>
-            <View style={styles.optionRow}>
+            <View style={[styles.optionRow, isLandscape && styles.optionRowLandscape]}>
               {JOINT_CALL_OPTIONS.map((option) => (
                 <Pressable
                   key={option}
@@ -163,7 +196,7 @@ export function CallSummaryModal({
 
             <Text style={styles.fieldLabel}>Quick Feedback</Text>
             <Text style={styles.helperText}>Select the points that match this doctor call.</Text>
-            <View style={styles.feedbackOptions}>
+            <View style={[styles.feedbackOptions, isLandscape && styles.feedbackOptionsLandscape]}>
               {QUICK_FEEDBACK_OPTIONS.map((option) => {
                 const selected = selectedFeedback.includes(option);
 
@@ -190,7 +223,7 @@ export function CallSummaryModal({
             </View>
           </ScrollView>
 
-          <View style={styles.actions}>
+          <View style={[styles.actions, isLandscape && styles.actionsLandscape]}>
             <AppButton
               label="Cancel"
               onPress={onCancel}
@@ -227,6 +260,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 22,
   },
+  backdropLandscape: {
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+  },
   sheet: {
     width: '100%',
     maxWidth: 510,
@@ -234,6 +271,9 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     overflow: 'hidden',
     backgroundColor: '#FFFFFF',
+  },
+  sheetLandscape: {
+    borderRadius: 20,
   },
   header: {
     backgroundColor: Colors.primary,
@@ -257,10 +297,18 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 24,
   },
+  contentLandscape: {
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 18,
+  },
   statsRow: {
     flexDirection: 'row',
     gap: 16,
     marginBottom: 28,
+  },
+  statsRowLandscape: {
+    marginBottom: 20,
   },
   statBox: {
     flex: 1,
@@ -290,8 +338,12 @@ const styles = StyleSheet.create({
   },
   optionRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     marginBottom: 26,
+  },
+  optionRowLandscape: {
+    marginBottom: 20,
   },
   optionButton: {
     flex: 1,
@@ -352,6 +404,9 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 30,
   },
+  feedbackOptionsLandscape: {
+    marginBottom: 20,
+  },
   feedbackChip: {
     minHeight: 38,
     paddingHorizontal: 14,
@@ -385,6 +440,10 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E8EDF5',
     backgroundColor: '#FFFFFF',
+  },
+  actionsLandscape: {
+    paddingTop: 10,
+    paddingBottom: 12,
   },
   cancelButton: {
     flex: 1,

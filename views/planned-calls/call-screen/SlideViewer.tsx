@@ -257,12 +257,12 @@ const styles = StyleSheet.create({
   slideIdentity: {
     gap: 2,
     maxWidth: 220,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
     marginBottom: 18,
     marginRight: 12,
-    borderRadius: 18,
-    backgroundColor: 'rgba(15, 23, 42, 0.64)',
+    borderRadius: 0,
+    backgroundColor: 'transparent',
   },
   slideTeam: {
     color: '#BFDBFE',

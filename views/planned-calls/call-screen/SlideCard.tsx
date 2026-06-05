@@ -1,6 +1,6 @@
 import { Colors } from '@/constants/theme';
 import { Image as ExpoImage } from 'expo-image';
-import { ImageSourcePropType, Platform, StyleSheet, Text, View } from 'react-native';
+import { ImageSourcePropType, Platform, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 export interface Slide {
@@ -44,10 +44,13 @@ function getImageUri(source: ImageSourcePropType | undefined) {
 }
 
 export function SlideCard({ slide }: SlideCardProps) {
+  const { width, height } = useWindowDimensions();
   const shouldShowHeroImage = Boolean(slide.image) && slide.bullets.length === 0;
   const isWeb = Platform.OS === 'web';
+  const isLandscape = width > height;
   const imageUri = getImageUri(slide.image);
   const heroGradientHeight = isWeb ? 260 : 180;
+  const showMobileEdgeShadow = !isWeb;
 
   if (shouldShowHeroImage) {
     return (
@@ -59,6 +62,42 @@ export function SlideCard({ slide }: SlideCardProps) {
             <ExpoImage source={slide.image} style={styles.heroImage} contentFit="contain" />
           )}
         </View>
+
+        {showMobileEdgeShadow ? (
+          <View pointerEvents="none" style={styles.heroEdgeShadow}>
+            <Svg width="100%" height="100%" preserveAspectRatio="none">
+              <Defs>
+                <LinearGradient id="callSlideLeftShadow" x1="0" y1="0" x2="1" y2="0">
+                  <Stop offset="0" stopColor="#020617" stopOpacity={0.12} />
+                  <Stop offset="1" stopColor="#020617" stopOpacity={0} />
+                </LinearGradient>
+                <LinearGradient id="callSlideRightShadow" x1="1" y1="0" x2="0" y2="0">
+                  <Stop offset="0" stopColor="#020617" stopOpacity={0.12} />
+                  <Stop offset="1" stopColor="#020617" stopOpacity={0} />
+                </LinearGradient>
+                <LinearGradient id="callSlideTopShadow" x1="0" y1="0" x2="0" y2="1">
+                  <Stop offset="0" stopColor="#020617" stopOpacity={0.12} />
+                  <Stop offset="1" stopColor="#020617" stopOpacity={0} />
+                </LinearGradient>
+                <LinearGradient id="callSlideBottomEdgeShadow" x1="0" y1="1" x2="0" y2="0">
+                  <Stop offset="0" stopColor="#020617" stopOpacity={0.14} />
+                  <Stop offset="1" stopColor="#020617" stopOpacity={0} />
+                </LinearGradient>
+              </Defs>
+              {isLandscape ? (
+                <>
+                  <Rect x="0" y="0" width="14%" height="100%" fill="url(#callSlideLeftShadow)" />
+                  <Rect x="86%" y="0" width="14%" height="100%" fill="url(#callSlideRightShadow)" />
+                </>
+              ) : (
+                <>
+                  <Rect x="0" y="0" width="100%" height="14%" fill="url(#callSlideTopShadow)" />
+                  <Rect x="0" y="84%" width="100%" height="16%" fill="url(#callSlideBottomEdgeShadow)" />
+                </>
+              )}
+            </Svg>
+          </View>
+        ) : null}
 
         <View pointerEvents="none" style={[styles.heroBottomGradient, { height: heroGradientHeight }]}>
           <Svg width="100%" height="100%" preserveAspectRatio="none">
@@ -188,5 +227,12 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+  },
+  heroEdgeShadow: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
   },
 });
