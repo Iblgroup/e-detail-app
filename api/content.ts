@@ -37,21 +37,31 @@ function parseDurationSeconds(duration: string | null | undefined) {
 }
 
 function normalizeAssetUrl(url: string) {
-  if (!API_BASE_URL || !url) {
-    return url;
+  const rawUrl = String(url ?? '').trim();
+  if (!API_BASE_URL || !rawUrl) {
+    return rawUrl;
   }
 
   try {
     const apiOrigin = new URL(API_BASE_URL).origin;
-    const assetUrl = new URL(url);
+    const sanitizedUrl = rawUrl.replace(/\\/g, '/');
+    const assetUrl = new URL(sanitizedUrl, apiOrigin);
+    const uploadPathIndex = assetUrl.pathname.toLowerCase().indexOf('/uploads/');
 
-    if (assetUrl.hostname === 'localhost' || assetUrl.hostname === '127.0.0.1') {
-      return `${apiOrigin}${assetUrl.pathname}${assetUrl.search}`;
+    // Always anchor uploaded slide assets to the current API origin so native
+    // devices do not depend on stale localhost/LAN IPs saved in older rows.
+    if (uploadPathIndex >= 0) {
+      const uploadPath = assetUrl.pathname.slice(uploadPathIndex);
+      return `${apiOrigin}${encodeURI(uploadPath)}${assetUrl.search}`;
     }
 
-    return url;
+    if (assetUrl.hostname === 'localhost' || assetUrl.hostname === '127.0.0.1') {
+      return `${apiOrigin}${encodeURI(assetUrl.pathname)}${assetUrl.search}`;
+    }
+
+    return assetUrl.toString();
   } catch {
-    return url;
+    return rawUrl;
   }
 }
 

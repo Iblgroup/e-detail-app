@@ -12,9 +12,10 @@ function isLoopbackHost(hostname: string) {
 }
 
 function isLocalWebHost() {
-  if (typeof window === 'undefined') return false;
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
 
-  return isLoopbackHost(window.location.hostname);
+  const hostname = window.location?.hostname;
+  return hostname ? isLoopbackHost(hostname) : false;
 }
 
 function getMetroHost() {
@@ -70,3 +71,4 @@ export function getApiBaseUrl() {
 }
 
 export const API_BASE_URL = getApiBaseUrl();
+
