@@ -1,5 +1,6 @@
 import { Colors } from '@/constants/theme';
-import { Image, ImageSourcePropType, StyleSheet, Text, View } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
+import { ImageSourcePropType, Platform, StyleSheet, Text, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 export interface Slide {
@@ -16,14 +17,46 @@ interface SlideCardProps {
   slide: Slide;
 }
 
+const webHeroImageStyle = {
+  width: '100%',
+  height: '100%',
+  objectFit: 'contain' as const,
+  display: 'block',
+};
+
+const webSideImageStyle = {
+  width: '45%',
+  height: '100%',
+  objectFit: 'cover' as const,
+  display: 'block',
+};
+
+function getImageUri(source: ImageSourcePropType | undefined) {
+  if (!source || Array.isArray(source) || typeof source === 'number') {
+    return null;
+  }
+
+  if ('uri' in source && typeof source.uri === 'string') {
+    return source.uri;
+  }
+
+  return null;
+}
+
 export function SlideCard({ slide }: SlideCardProps) {
   const shouldShowHeroImage = Boolean(slide.image) && slide.bullets.length === 0;
+  const isWeb = Platform.OS === 'web';
+  const imageUri = getImageUri(slide.image);
 
   if (shouldShowHeroImage) {
     return (
       <View style={[styles.card, styles.heroCard]}>
         <View style={styles.heroImageFrame}>
-          <Image source={slide.image} style={styles.heroImage} resizeMode="contain" />
+          {isWeb && imageUri ? (
+            <img src={imageUri} alt={slide.title} style={webHeroImageStyle} />
+          ) : (
+            <ExpoImage source={slide.image} style={styles.heroImage} contentFit="contain" />
+          )}
         </View>
 
         <View pointerEvents="none" style={styles.heroBottomGradient}>
@@ -60,7 +93,13 @@ export function SlideCard({ slide }: SlideCardProps) {
           </View>
         </View>
 
-        {slide.image && <Image source={slide.image} style={styles.image} resizeMode="cover" />}
+        {slide.image ? (
+          isWeb && imageUri ? (
+            <img src={imageUri} alt={slide.title} style={webSideImageStyle} />
+          ) : (
+            <ExpoImage source={slide.image} style={styles.image} contentFit="cover" />
+          )
+        ) : null}
       </View>
     </View>
   );
@@ -71,6 +110,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     overflow: 'hidden',
     flex: 1,
+    width: '100%',
+    height: '100%',
   },
   heroCard: {
     backgroundColor: '#0F172A',
@@ -78,6 +119,8 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     flexDirection: 'row',
+    width: '100%',
+    height: '100%',
   },
   textBlock: {
     flex: 1,
@@ -129,11 +172,15 @@ const styles = StyleSheet.create({
   },
   heroImageFrame: {
     flex: 1,
+    width: '100%',
+    height: '100%',
     backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   heroImage: {
-    flex: 1,
     width: '100%',
+    height: '100%',
   },
   heroBottomGradient: {
     position: 'absolute',

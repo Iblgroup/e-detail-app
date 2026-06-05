@@ -48,15 +48,13 @@ function normalizeAssetUrl(url: string) {
     const assetUrl = new URL(sanitizedUrl, apiOrigin);
     const uploadPathIndex = assetUrl.pathname.toLowerCase().indexOf('/uploads/');
 
-    // Always anchor uploaded slide assets to the current API origin so native
-    // devices do not depend on stale localhost/LAN IPs saved in older rows.
-    if (uploadPathIndex >= 0) {
-      const uploadPath = assetUrl.pathname.slice(uploadPathIndex);
-      return `${apiOrigin}${encodeURI(uploadPath)}${assetUrl.search}`;
-    }
-
     if (assetUrl.hostname === 'localhost' || assetUrl.hostname === '127.0.0.1') {
       return `${apiOrigin}${encodeURI(assetUrl.pathname)}${assetUrl.search}`;
+    }
+
+    if (uploadPathIndex >= 0 && !/^(https?:)?\/\//i.test(sanitizedUrl)) {
+      const uploadPath = assetUrl.pathname.slice(uploadPathIndex);
+      return `${apiOrigin}${encodeURI(uploadPath)}${assetUrl.search}`;
     }
 
     return assetUrl.toString();

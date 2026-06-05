@@ -11,13 +11,6 @@ function isLoopbackHost(hostname: string) {
   return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0';
 }
 
-function isLocalWebHost() {
-  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
-
-  const hostname = window.location?.hostname;
-  return hostname ? isLoopbackHost(hostname) : false;
-}
-
 function getMetroHost() {
   const hostUri = trimEnv(Constants.expoConfig?.hostUri);
   if (!hostUri) {
@@ -59,8 +52,8 @@ export function getApiBaseUrl() {
     DEFAULT_LOCAL_API_BASE_URL;
   const nativeApiBaseUrl = trimEnv(process.env.EXPO_PUBLIC_NATIVE_API_BASE_URL);
 
-  if (isLocalWebHost()) {
-    return localApiBaseUrl;
+  if (Platform.OS === 'web') {
+    return deployedApiBaseUrl || localApiBaseUrl;
   }
 
   if (isNativeDevRuntime()) {
