@@ -45,14 +45,6 @@ function isNativeDevRuntime() {
   return Platform.OS !== 'web' && typeof __DEV__ !== 'undefined' && __DEV__;
 }
 
-function isWebLocalhostRuntime() {
-  if (Platform.OS !== 'web' || typeof window === 'undefined') {
-    return false;
-  }
-
-  return isLoopbackHost(window.location.hostname);
-}
-
 export function getApiBaseUrl() {
   const deployedApiBaseUrl = trimEnv(process.env.EXPO_PUBLIC_API_BASE_URL);
   const localApiBaseUrl =
@@ -61,10 +53,6 @@ export function getApiBaseUrl() {
   const nativeApiBaseUrl = trimEnv(process.env.EXPO_PUBLIC_NATIVE_API_BASE_URL);
 
   if (Platform.OS === 'web') {
-    if (isWebLocalhostRuntime()) {
-      return localApiBaseUrl;
-    }
-
     return deployedApiBaseUrl || localApiBaseUrl;
   }
 
