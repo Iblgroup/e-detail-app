@@ -1,7 +1,8 @@
 import { AppButton } from '@/components/ui/AppButton';
+import { AppBottomSheetSelect } from '@/components/ui/AppBottomSheetSelect';
 import { Colors } from '@/constants/theme';
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export interface CallSummaryData {
@@ -9,6 +10,8 @@ export interface CallSummaryData {
   jointCall: string;
   samplesProvided: string;
   doctorInterest: 'High' | 'Medium' | 'Low';
+  // Doctor picked in the summary (institution/walking calls).
+  selectedDoctor?: string;
 }
 
 interface CallSummaryModalProps {
@@ -16,13 +19,17 @@ interface CallSummaryModalProps {
   durationSeconds: number;
   slidesViewed: number;
   totalSlides: number;
+  // SKUs/brands presented in this call (for the Samples Provided picker).
+  sampleOptions?: string[];
+  // When set, a doctor must be picked (institution/walking calls) before submit.
+  requireDoctor?: boolean;
+  doctorOptions?: string[];
   onCancel: () => void;
   onSubmit: (summary: CallSummaryData) => void;
 }
 
 const JOINT_CALL_OPTIONS = ['No', 'NSM', 'HOS', 'SM', 'RM'];
-const SAMPLE_OPTIONS = ['Yes', 'No'];
-const DOCTOR_INTEREST_OPTIONS = ['High', 'Medium', 'Low'] as const;
+// const DOCTOR_INTEREST_OPTIONS = ['High', 'Medium', 'Low'] as const; // hidden for now
 const QUICK_FEEDBACK_OPTIONS = [
   'Interested',
   'Need Follow-up',
@@ -47,29 +54,50 @@ export function CallSummaryModal({
   durationSeconds,
   slidesViewed,
   totalSlides,
+  sampleOptions = [],
+  requireDoctor = false,
+  doctorOptions = [],
   onCancel,
   onSubmit,
 }: CallSummaryModalProps) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isLandscape = width > height;
-  const [jointCall, setJointCall] = useState('No');
-  const [samplesProvided, setSamplesProvided] = useState('No');
-  const [doctorInterest, setDoctorInterest] = useState<'High' | 'Medium' | 'Low'>('Medium');
+  const [selectedDoctor, setSelectedDoctor] = useState('');
+  const [jointCall, setJointCall] = useState<string[]>(['No']);
+  const [samplesProvided, setSamplesProvided] = useState('None');
+  const canSubmit = !requireDoctor || selectedDoctor.trim().length > 0;
+  const sampleSelectOptions = useMemo(
+    () => ['None', ...sampleOptions],
+    [sampleOptions]
+  );
+  // Doctor Interest hidden for now; keep a default for the submitted report.
+  const [doctorInterest] = useState<'High' | 'Medium' | 'Low'>('Medium');
   const [selectedFeedback, setSelectedFeedback] = useState<string[]>([]);
+  const [customFeedback, setCustomFeedback] = useState('');
 
   const safeSlidesViewed = useMemo(
     () => Math.min(Math.max(slidesViewed, 0), totalSlides),
     [slidesViewed, totalSlides]
   );
 
-  const feedbackSummary = useMemo(
-    () => selectedFeedback.join(', '),
-    [selectedFeedback]
-  );
+  const feedbackSummary = useMemo(() => {
+    const parts = [...selectedFeedback];
+    const custom = customFeedback.trim();
+    if (custom) parts.push(custom);
+    return parts.join(', ');
+  }, [selectedFeedback, customFeedback]);
 
   const toggleFeedback = (option: string) => {
     setSelectedFeedback((current) =>
+      current.includes(option)
+        ? current.filter((item) => item !== option)
+        : [...current, option]
+    );
+  };
+
+  const toggleJointCall = (option: string) => {
+    setJointCall((current) =>
       current.includes(option)
         ? current.filter((item) => item !== option)
         : [...current, option]
@@ -120,6 +148,28 @@ export function CallSummaryModal({
             showsVerticalScrollIndicator={false}
             bounces={false}
           >
+            {requireDoctor ? (
+              <View style={styles.doctorField}>
+                <Text style={styles.fieldLabel}>
+                  Doctor <Text style={styles.requiredMark}>*</Text>
+                </Text>
+                <AppBottomSheetSelect
+                  title="Select Doctor"
+                  placeholder="Select a doctor..."
+                  options={doctorOptions}
+                  value={selectedDoctor}
+                  onChange={setSelectedDoctor}
+                  searchable
+                  emptyText="No doctors available for this team."
+                />
+                {!selectedDoctor ? (
+                  <Text style={styles.requiredHint}>
+                    Please select a doctor to submit this call.
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
+
             <View style={[styles.statsRow, isLandscape && styles.statsRowLandscape]}>
               <View style={styles.statBox}>
                 <Text style={styles.statLabel}>Duration</Text>
@@ -135,42 +185,35 @@ export function CallSummaryModal({
 
             <Text style={styles.fieldLabel}>Was this a joint call?</Text>
             <View style={[styles.optionRow, isLandscape && styles.optionRowLandscape]}>
-              {JOINT_CALL_OPTIONS.map((option) => (
-                <Pressable
-                  key={option}
-                  onPress={() => setJointCall(option)}
-                  style={[styles.optionButton, jointCall === option && styles.optionButtonActive]}
-                >
-                  <Text style={[styles.optionText, jointCall === option && styles.optionTextActive]}>
-                    {option}
-                  </Text>
-                </Pressable>
-              ))}
+              {JOINT_CALL_OPTIONS.map((option) => {
+                const selected = jointCall.includes(option);
+                return (
+                  <Pressable
+                    key={option}
+                    onPress={() => toggleJointCall(option)}
+                    style={[styles.optionButton, selected && styles.optionButtonActive]}
+                  >
+                    <Text style={[styles.optionText, selected && styles.optionTextActive]}>
+                      {option}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
 
             <Text style={styles.fieldLabel}>Samples Provided?</Text>
-            <View style={styles.twoColumnRow}>
-              {SAMPLE_OPTIONS.map((option) => (
-                <Pressable
-                  key={option}
-                  onPress={() => setSamplesProvided(option)}
-                  style={[
-                    styles.largeOptionButton,
-                    samplesProvided === option && styles.largeOptionButtonActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.largeOptionText,
-                      samplesProvided === option && styles.largeOptionTextActive,
-                    ]}
-                  >
-                    {option}
-                  </Text>
-                </Pressable>
-              ))}
+            <View style={styles.sampleSelectWrap}>
+              <AppBottomSheetSelect
+                title="Samples Provided"
+                placeholder="Select a sample..."
+                options={sampleSelectOptions}
+                value={samplesProvided}
+                onChange={setSamplesProvided}
+                searchable={sampleSelectOptions.length > 6}
+              />
             </View>
 
+            {/* Doctor Interest hidden for now
             <Text style={styles.fieldLabel}>Doctor Interest</Text>
             <View style={styles.threeColumnRow}>
               {DOCTOR_INTEREST_OPTIONS.map((option) => (
@@ -193,6 +236,7 @@ export function CallSummaryModal({
                 </Pressable>
               ))}
             </View>
+            */}
 
             <Text style={styles.fieldLabel}>Quick Feedback</Text>
             <Text style={styles.helperText}>Select the points that match this doctor call.</Text>
@@ -221,6 +265,16 @@ export function CallSummaryModal({
                 );
               })}
             </View>
+
+            <Text style={styles.fieldLabel}>Additional Comment</Text>
+            <TextInput
+              value={customFeedback}
+              onChangeText={setCustomFeedback}
+              placeholder="Add a custom comment (optional)"
+              placeholderTextColor="#7B8493"
+              multiline
+              style={styles.commentInput}
+            />
           </ScrollView>
 
           <View style={[styles.actions, isLandscape && styles.actionsLandscape]}>
@@ -233,16 +287,18 @@ export function CallSummaryModal({
             />
             <AppButton
               label="End Call & Submit"
-              onPress={() =>
+              onPress={() => {
+                if (!canSubmit) return;
                 onSubmit({
                   feedback: feedbackSummary,
-                  jointCall,
+                  jointCall: jointCall.join(', '),
                   samplesProvided,
                   doctorInterest,
-                })
-              }
+                  selectedDoctor: selectedDoctor.trim() || undefined,
+                });
+              }}
               variant="primary"
-              style={styles.submitButton}
+              style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
               textStyle={styles.submitText}
             />
           </View>
@@ -336,6 +392,19 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginBottom: 7,
   },
+  doctorField: {
+    marginBottom: 22,
+  },
+  requiredMark: {
+    color: Colors.danger,
+    fontWeight: '800',
+  },
+  requiredHint: {
+    color: Colors.danger,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 6,
+  },
   optionRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -369,6 +438,9 @@ const styles = StyleSheet.create({
     gap: 16,
     marginBottom: 26,
   },
+  sampleSelectWrap: {
+    marginBottom: 26,
+  },
   threeColumnRow: {
     flexDirection: 'row',
     gap: 10,
@@ -397,6 +469,18 @@ const styles = StyleSheet.create({
     color: '#7B8493',
     fontSize: 13,
     marginBottom: 30,
+  },
+  commentInput: {
+    minHeight: 84,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    fontSize: 14,
+    color: Colors.text,
+    textAlignVertical: 'top',
+    marginTop: 7,
   },
   feedbackOptions: {
     flexDirection: 'row',
@@ -467,6 +551,9 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
+  },
+  submitButtonDisabled: {
+    opacity: 0.5,
   },
   submitText: {
     color: Colors.textOnDark,

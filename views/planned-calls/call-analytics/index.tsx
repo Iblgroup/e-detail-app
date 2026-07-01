@@ -144,30 +144,37 @@ export default function CallAnalytics({
   const interest = getDoctorInterest(feedback, doctorInterest);
   const feedbackToneLabel = getFeedbackToneLabel(feedback, doctorInterest);
 
-  const slideTimeData = safeSlideTimes.map((seconds, index) => {
-    const label = getSlideLabel(slideLabels, index);
-    const parts = splitSlideLabel(label);
-    return {
-      id: `${index}-${label}`,
-      label,
-      primaryLabel: parts.primary,
-      secondaryLabel: parts.secondary,
-      value: seconds,
-      valueLabel: `${seconds}s`,
-    };
-  });
+  // Aggregate the per-slide time by brand (the primary label of each slide).
+  const brandTimes = (() => {
+    const map = new Map<string, { brand: string; value: number }>();
+    safeSlideTimes.forEach((seconds, index) => {
+      const brand = splitSlideLabel(getSlideLabel(slideLabels, index)).primary;
+      const existing = map.get(brand);
+      if (existing) {
+        existing.value += seconds;
+      } else {
+        map.set(brand, { brand, value: seconds });
+      }
+    });
+    return [...map.values()];
+  })();
 
-  const slideTimeSummary = safeSlideTimes.map((seconds, index) => {
-    const label = getSlideLabel(slideLabels, index);
-    const parts = splitSlideLabel(label);
-    return {
-      id: `${index}-${label}`,
-      label,
-      primaryLabel: parts.primary,
-      secondaryLabel: parts.secondary,
-      valueLabel: formatSlideTime(seconds),
-    };
-  });
+  const slideTimeData = brandTimes.map((item, index) => ({
+    id: `${index}-${item.brand}`,
+    label: item.brand,
+    primaryLabel: item.brand,
+    secondaryLabel: '',
+    value: item.value,
+    valueLabel: `${item.value}s`,
+  }));
+
+  const slideTimeSummary = brandTimes.map((item, index) => ({
+    id: `${index}-${item.brand}`,
+    label: item.brand,
+    primaryLabel: item.brand,
+    secondaryLabel: '',
+    valueLabel: formatSlideTime(item.value),
+  }));
 
   const handleBackPress = () => {
     if (callType === 'unplanned' && returnToNewDoctor) {
@@ -193,15 +200,17 @@ export default function CallAnalytics({
           </View>
         </SafeAreaView>
 
-        <View style={styles.headerTitleRow}>
+        <View style={styles.headerProfile}>
           <View style={styles.headerIconCard}>
-            <Ionicons name="stats-chart-outline" size={36} color={Colors.primary} />
+            <Ionicons name="stats-chart-outline" size={28} color={Colors.primary} />
           </View>
-          <View style={styles.headerTextBlock}>
-            <Text style={styles.headerTitle}>Call Analytics</Text>
-            <Text style={styles.headerSubtitle}>
-              Detailed {callType} report for {doctorName ? `${doctorName}'s` : 'your'} last visit
-            </Text>
+          <Text style={styles.headerTitle}>Call Analytics</Text>
+          <Text style={styles.headerSubtitle}>
+            Detailed {callType} report for {doctorName ? `${doctorName}'s` : 'your'} last visit
+          </Text>
+          <View style={styles.completedBadge}>
+            <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
+            <Text style={styles.completedText}>Call Completed</Text>
           </View>
         </View>
       </View>
@@ -211,11 +220,6 @@ export default function CallAnalytics({
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.submittedBadge}>
-          <Ionicons name="checkmark-circle-outline" size={18} color={Colors.success} />
-          <Text style={styles.submittedText}>Call Completed</Text>
-        </View>
-
         <View style={styles.metricGrid}>
           <AppMetricCard
             icon="time-outline"
@@ -231,6 +235,7 @@ export default function CallAnalytics({
             value={`${slidesViewed} / ${totalSlides}`}
             pill={`${completion}% completion`}
           />
+          {/* Doctor Interest hidden (removed from the call summary)
           <AppMetricCard
             icon="ribbon-outline"
             accent="#F97316"
@@ -238,13 +243,14 @@ export default function CallAnalytics({
             value={interest}
             pill={feedbackToneLabel}
           />
+          */}
         </View>
 
         <View style={styles.detailGrid}>
           <View style={[styles.card, styles.chartCard]}>
             <View style={styles.sectionHeader}>
               <Ionicons name="trending-up-outline" size={16} color={Colors.primary} />
-              <Text style={styles.sectionTitle}>Time Spent per Slide (Seconds)</Text>
+              <Text style={styles.sectionTitle}>Time Spent per Brand (Seconds)</Text>
             </View>
 
             <View style={styles.chartWrapper}>
@@ -308,17 +314,16 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.7,
   },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+  headerProfile: {
+    alignItems: 'center',
     paddingHorizontal: 20,
-    gap: 14,
-    marginTop: 8,
+    gap: 10,
+    marginTop: 4,
   },
   headerIconCard: {
-    width: 80,
-    height: 80,
-    borderRadius: 16,
+    width: 60,
+    height: 60,
+    borderRadius: 14,
     backgroundColor: Colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
@@ -328,21 +333,35 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-  headerTextBlock: {
-    flex: 1,
-    paddingBottom: 6,
-    gap: 2,
-  },
   headerTitle: {
     color: Colors.textOnDark,
     fontSize: 22,
     fontWeight: '900',
+    textAlign: 'center',
   },
   headerSubtitle: {
     color: 'rgba(255,255,255,0.68)',
     fontSize: 14,
     fontWeight: '600',
     lineHeight: 18,
+    textAlign: 'center',
+  },
+  completedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#22C55E',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    marginTop: 4,
+  },
+  completedText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   scroll: {
     flex: 1,
@@ -352,25 +371,6 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 14,
     paddingBottom: 36,
-  },
-  submittedBadge: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-    backgroundColor: '#F0FDF4',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  submittedText: {
-    color: Colors.success,
-    fontSize: 14,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
   },
   metricGrid: {
     gap: 14,

@@ -1,14 +1,15 @@
 import { AppBarChart, BarChartDataPoint } from '@/components/ui/AppBarChart';
-import { AppBottomSheetSelect } from '@/components/ui/AppBottomSheetSelect';
+import { AppCalendarSheet } from '@/components/ui/AppCalendarSheet';
 import { AppButton } from '@/components/ui/AppButton';
 import { AppChartCard } from '@/components/ui/AppChartCard';
 import { AppLineChart, LineChartDataPoint } from '@/components/ui/AppLineChart';
 import { AppMetricCard } from '@/components/ui/AppMetricCard';
 import { ScreenLayout } from '@/components/ui/ScreenLayout';
 import { Colors } from '@/constants/theme';
+import { exportAnalyticsPdf } from '@/lib/analytics/exportPdf';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 
 const metrics = [
   { label: 'Total Calls', value: '284', change: '+12', tone: 'positive' },
@@ -39,14 +40,35 @@ const rfiData = {
   completed: 284,
 };
 
-const periodOptions = ['This Month', 'Last Month', 'This Quarter', 'This Year'];
-
 export default function AnalyticsScreen() {
-  const [selectedPeriod, setSelectedPeriod] = useState(periodOptions[0]);
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [isExporting, setIsExporting] = useState(false);
   const outstandingCalls = Math.max(0, rfiData.planned - rfiData.completed);
   const rfiCompletion = rfiData.planned > 0
     ? Math.round((rfiData.completed / rfiData.planned) * 100)
     : 0;
+
+  const handleExportPdf = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      await exportAnalyticsPdf({
+        dateLabel: selectedDate.toLocaleDateString(undefined, {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        }),
+        metrics,
+        rfi: rfiData,
+        specialty: specialtyData,
+      });
+    } catch (error) {
+      console.log('[analytics] PDF export failed', error);
+      Alert.alert('Export failed', 'Could not generate the PDF report. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <ScreenLayout
@@ -56,13 +78,10 @@ export default function AnalyticsScreen() {
     >
       <View style={styles.headerActions}>
         <View style={styles.periodSelectWrap}>
-          <AppBottomSheetSelect
-            options={periodOptions}
-            value={selectedPeriod}
-            onChange={setSelectedPeriod}
-            placeholder="Select period"
-            title="Select Period"
-            searchable={false}
+          <AppCalendarSheet
+            value={selectedDate}
+            onChange={setSelectedDate}
+            title="Select Date"
             chevronColor={Colors.primary}
             triggerStyle={styles.periodButton}
             triggerContentStyle={styles.periodButtonContent}
@@ -71,7 +90,8 @@ export default function AnalyticsScreen() {
         </View>
         <View style={styles.exportButtonWrap}>
           <AppButton
-            label="Export PDF"
+            label={isExporting ? 'Preparing…' : 'Export PDF'}
+            onPress={handleExportPdf}
             style={styles.exportButton}
             textStyle={styles.exportButtonText}
             icon={<Ionicons name="download-outline" size={20} color={Colors.textOnDark} />}
@@ -81,13 +101,14 @@ export default function AnalyticsScreen() {
 
       <View style={styles.metricsGrid}>
         {metrics.map((metric) => (
-          <AppMetricCard
-            key={metric.label}
-            label={metric.label}
-            value={metric.value}
-            pill={metric.change}
-            tone={metric.tone}
-          />
+          <View key={metric.label} style={styles.metricCell}>
+            <AppMetricCard
+              label={metric.label}
+              value={metric.value}
+              pill={metric.change}
+              tone={metric.tone}
+            />
+          </View>
         ))}
       </View>
 
@@ -205,7 +226,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   metricsGrid: {
+    flexDirection: 'row',
     gap: 12,
+  },
+  metricCell: {
+    flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
   },
   chartsGrid: {
     gap: 16,
@@ -231,6 +258,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  sectionTitle: {
+    color: Colors.text,
+    fontSize: 16,
+    fontWeight: '800',
   },
   rfiSubtitle: {
     color: Colors.textMuted,

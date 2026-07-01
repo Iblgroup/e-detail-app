@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import axios from '@/config/axios';
 import { ApiEndpoints } from '@/api/endpoints';
 import { API_BASE_URL } from '@/config/api-base-url';
+import { resolveCachedImage } from '@/lib/offline/imageCache';
 
 export interface ForcingContentRow {
   team_id: number;
@@ -36,7 +37,7 @@ function parseDurationSeconds(duration: string | null | undefined) {
   return Number.isFinite(seconds) && seconds > 0 ? seconds : 10;
 }
 
-function normalizeAssetUrl(url: string) {
+export function normalizeAssetUrl(url: string) {
   const rawUrl = String(url ?? '').trim();
   if (!API_BASE_URL || !rawUrl) {
     return rawUrl;
@@ -63,7 +64,12 @@ function normalizeAssetUrl(url: string) {
   }
 }
 
-const getForcingContent = async ({
+export const forcingContentKey = (
+  teamId?: number,
+  doctorSpecId?: number,
+) => ['forcing-content', teamId ?? 'no-team', doctorSpecId ?? 'no-spec'] as const;
+
+export const getForcingContent = async ({
   teamId,
   doctorSpecId,
 }: ForcingContentParams): Promise<ForcingContentResponse> => {
@@ -121,7 +127,7 @@ function sortForcingRows(rows: ForcingContentRow[]) {
 
 export const useForcingSlides = ({ teamId, doctorSpecId }: ForcingContentParams) => {
   return useQuery({
-    queryKey: ['forcing-content', teamId ?? 'no-team', doctorSpecId ?? 'no-spec'],
+    queryKey: forcingContentKey(teamId, doctorSpecId),
     queryFn: () => getForcingContent({ teamId, doctorSpecId }),
     enabled: Boolean(teamId && doctorSpecId),
     staleTime: 5 * 60 * 1000,
@@ -134,7 +140,16 @@ export const useForcingSlides = ({ teamId, doctorSpecId }: ForcingContentParams)
         subtitle: row.sku_name || row.specility_name || 'Doctor Call',
         bullets: [],
         durationSeconds: parseDurationSeconds(row.duration),
-        image: { uri: normalizeAssetUrl(row.url) },
+        // Use the on-device copy when available so slides play offline.
+        image: { uri: resolveCachedImage(normalizeAssetUrl(row.url)) ?? '' },
       })),
   });
 };
+
+/** Image URLs (as the slides will request them) for a forcing response. */
+export function forcingImageUrls(response: ForcingContentResponse): string[] {
+  return response.data
+    .map((row) => normalizeAssetUrl(row.url))
+    .filter(Boolean);
+}
+

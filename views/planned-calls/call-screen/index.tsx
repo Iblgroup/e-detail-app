@@ -1,5 +1,5 @@
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { CallHeader } from './CallHeader';
 import { SlideViewer } from './SlideViewer';
@@ -9,6 +9,8 @@ import { markCallCompleted } from '../callCompletionStore';
 import { CallType } from '../callTypes';
 import { queueReturnToNewDoctor } from '@/views/unplanned-calls/returnToNewDoctorStore';
 import { DoctorCallSlide, useForcingSlides } from '@/api/content';
+import { useTeamSkus } from '@/api/sku';
+import { useInfiniteDoctors } from '@/api/doctor';
 
 const DEMO_SLIDES: Slide[] = [
   {
@@ -48,6 +50,9 @@ interface CallScreenProps {
   returnToNewDoctor?: boolean;
   specialtyId?: number;
   teamId?: number;
+  // Institution call type ('walking' | 'group'); when set, the summary requires
+  // picking a doctor from the team.
+  institutionType?: string;
 }
 
 function mapForcingSlides(slides: DoctorCallSlide[]): Slide[] {
@@ -77,9 +82,28 @@ export default function CallScreen({
   returnToNewDoctor = false,
   specialtyId,
   teamId,
+  institutionType,
 }: CallScreenProps) {
+  const isInstitutionCall = Boolean(institutionType);
   const hasForcingContext = Boolean(teamId && specialtyId);
   const forcingSlidesQuery = useForcingSlides({ teamId, doctorSpecId: specialtyId });
+  // The team's SKUs, for the "Samples Provided" picker.
+  const sampleOptions = useTeamSkus(teamId).data ?? [];
+  // For institution calls, the summary requires picking a doctor from the team's
+  // (cached) doctor pool. Only enabled for institution calls.
+  const teamDoctorsQuery = useInfiniteDoctors({
+    teamId: isInstitutionCall ? teamId : undefined,
+  });
+  const doctorOptions = useMemo(() => {
+    const rows = teamDoctorsQuery.data?.pages.flatMap((page) => page.data) ?? [];
+    return [
+      ...new Set(
+        rows
+          .map((row) => String(row.DOCTORNAME ?? '').trim())
+          .filter(Boolean)
+      ),
+    ].sort((a, b) => a.localeCompare(b));
+  }, [teamDoctorsQuery.data?.pages]);
   const slides = !hasForcingContext
     ? DEMO_SLIDES
     : forcingSlidesQuery.data && forcingSlidesQuery.data.length > 0
@@ -106,9 +130,12 @@ export default function CallScreen({
     (summary: CallSummaryData) => {
       if (hasEndedRef.current) return;
 
+      // Institution/walking calls carry the doctor chosen in the summary.
+      const effectiveDoctorName = summary.selectedDoctor?.trim() || doctorName;
+
       hasEndedRef.current = true;
       markCallCompleted(doctorId, callType, {
-        doctorName,
+        doctorName: effectiveDoctorName,
         durationSeconds: elapsedSeconds,
         slidesViewed,
         totalSlides: slides.length,
@@ -129,7 +156,7 @@ export default function CallScreen({
         params: {
           id: doctorId ?? 'unknown',
           callType,
-          doctorName,
+          doctorName: effectiveDoctorName,
           duration: String(elapsedSeconds),
           slidesViewed: String(slidesViewed),
           totalSlides: String(slides.length),
@@ -179,6 +206,9 @@ export default function CallScreen({
         durationSeconds={elapsedSeconds}
         slidesViewed={slidesViewed}
         totalSlides={slides.length}
+        sampleOptions={sampleOptions}
+        requireDoctor={isInstitutionCall}
+        doctorOptions={doctorOptions}
         onCancel={() => setIsSummaryVisible(false)}
         onSubmit={handleSubmitSummary}
       />

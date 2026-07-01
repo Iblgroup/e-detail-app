@@ -25,7 +25,7 @@ export function DoctorDetailHeader({ name, specialty }: DoctorDetailHeaderProps)
 
       <View style={styles.profileRow}>
         <View style={styles.avatarCard}>
-          <Ionicons name="pulse-outline" size={36} color={Colors.primary} />
+          <Ionicons name="pulse-outline" size={28} color={Colors.primary} />
         </View>
         <View style={styles.nameBlock}>
           <Text style={styles.name}>{name}</Text>
@@ -55,16 +55,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   profileRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+    flexDirection: 'column',
+    alignItems: 'center',
     paddingHorizontal: 20,
-    gap: 14,
-    marginTop: 8,
+    gap: 10,
+    marginTop: 4,
   },
   avatarCard: {
-    width: 80,
-    height: 80,
-    borderRadius: 16,
+    width: 60,
+    height: 60,
+    borderRadius: 14,
     backgroundColor: Colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
@@ -75,17 +75,19 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   nameBlock: {
-    paddingBottom: 6,
+    alignItems: 'center',
     gap: 2,
   },
   name: {
     fontSize: 18,
     fontWeight: '800',
-    color: 'rgba(255,255,255,0.25)',
+    color: Colors.textOnDark,
+    textAlign: 'center',
   },
   specialty: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.5)',
+    color: 'rgba(255,255,255,0.85)',
     fontWeight: '500',
+    textAlign: 'center',
   },
 });

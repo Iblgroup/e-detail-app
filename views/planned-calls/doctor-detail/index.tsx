@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { CallType } from '../callTypes';
-import { AddTokenButton } from './AddTokenButton';
+// import { AddTokenButton } from './AddTokenButton'; // hidden for now
 import { ArrivedButton } from './ArrivedButton';
 import { CallCompletedCard } from './CallCompletedCard';
 import { CancelCallButton } from './CancelCallButton';
@@ -41,7 +41,7 @@ export default function DoctorDetail({
   callType = 'planned',
 }: DoctorDetailProps) {
   const [arrived, setArrived] = useState(false);
-  const [tokenAdded, setTokenAdded] = useState(false);
+  // const [tokenAdded, setTokenAdded] = useState(false); // Add Card (Token) hidden
   const plannedCallsSource = doctor.plannedCalls ?? [
     {
       id: `${doctor.id}-planned-call`,
@@ -80,13 +80,8 @@ export default function DoctorDetail({
           <CallCompletedCard />
         ) : (
           <View style={styles.buttonsRow}>
-            <View style={styles.buttonCellHalf}>
-              <AddTokenButton
-                active={tokenAdded}
-                onPress={() => setTokenAdded((value) => !value)}
-              />
-            </View>
-            <View style={styles.buttonCellHalf}>
+            {/* Add Card (Token) hidden for now */}
+            <View style={styles.buttonCellFull}>
               <ArrivedButton arrived={arrived} onPress={() => setArrived((v) => !v)} />
             </View>
             <View style={styles.buttonCellHalf}>
@@ -139,6 +134,11 @@ const styles = StyleSheet.create({
   },
   buttonCellHalf: {
     width: '50%',
+    height: 140,
+    paddingHorizontal: 6,
+  },
+  buttonCellFull: {
+    width: '100%',
     height: 140,
     paddingHorizontal: 6,
   },

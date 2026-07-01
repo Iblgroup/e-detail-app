@@ -1,13 +1,15 @@
-import { useCallback, useDeferredValue, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { AppSearchInput } from '@/components/ui/AppSearchInput';
 import { ScreenLayout } from '@/components/ui/ScreenLayout';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/providers/AuthProvider';
+import { useCallMode } from '@/lib/settings/callModeStore';
 import { DoctorDataRow, useInfinitePlannedDoctors } from '@/api/doctor';
 import { ScheduleSectionHeader } from './ScheduleSectionHeader';
 import { DoctorCard, Doctor } from './DoctorCard';
+import { InstitutionCallPanel } from './InstitutionCallPanel';
 import { getCompletedCallIds } from './callCompletionStore';
 
 function asText(value: unknown, fallback: string) {
@@ -18,6 +20,9 @@ function asText(value: unknown, fallback: string) {
   const text = String(value).trim();
   return text || fallback;
 }
+
+// Doctors revealed per scroll, sliced from the fully-cached list (no network).
+const LIST_PAGE = 30;
 
 function mapDoctors(rows: DoctorDataRow[]): Doctor[] {
   return rows.map((row) => ({
@@ -34,14 +39,23 @@ function mapDoctors(rows: DoctorDataRow[]): Doctor[] {
 
 export default function PlannedCalls() {
   const { user } = useAuth();
+  const { callMode } = useCallMode();
   const [completedCallIds, setCompletedCallIds] = useState(() => getCompletedCallIds('planned'));
   const [searchQuery, setSearchQuery] = useState('');
   const deferredSearchQuery = useDeferredValue(searchQuery.trim());
+  // How many of the cached doctors are currently shown (client-side paging).
+  const [visibleCount, setVisibleCount] = useState(LIST_PAGE);
+  // No search query is sent to the API — the full list is cached by the sync
+  // and we filter it locally (offline-first; the screen never calls the API).
   const doctorsQuery = useInfinitePlannedDoctors({
     mieId: user?.mieId,
     teamId: user?.teamId,
-    query: deferredSearchQuery,
   });
+
+  // Restart paging when the search changes.
+  useEffect(() => {
+    setVisibleCount(LIST_PAGE);
+  }, [deferredSearchQuery]);
 
   useFocusEffect(
     useCallback(() => {
@@ -50,9 +64,18 @@ export default function PlannedCalls() {
   );
 
   const doctors = useMemo(() => {
-    const mappedDoctors = mapDoctors(
+    let mappedDoctors = mapDoctors(
       doctorsQuery.data?.pages.flatMap((page) => page.data) ?? []
     );
+
+    const search = deferredSearchQuery.toLowerCase();
+    if (search) {
+      mappedDoctors = mappedDoctors.filter((doctor) =>
+        [doctor.name, doctor.specialty, doctor.hospital, doctor.address].some(
+          (value) => value?.toLowerCase().includes(search)
+        )
+      );
+    }
 
     return mappedDoctors
       .map((doctor) => ({
@@ -60,39 +83,41 @@ export default function PlannedCalls() {
         status: completedCallIds.has(doctor.id) ? 'completed' as const : 'pending' as const,
       }))
       .sort((a, b) => Number(a.status === 'completed') - Number(b.status === 'completed'));
-  }, [completedCallIds, doctorsQuery.data?.pages]);
+  }, [completedCallIds, deferredSearchQuery, doctorsQuery.data?.pages]);
+
+  const visibleDoctors = useMemo(
+    () => doctors.slice(0, visibleCount),
+    [doctors, visibleCount]
+  );
 
   const remaining = doctors.filter((doctor) => doctor.status !== 'completed').length;
   const totalLoaded = doctors.length;
-  const totalAvailable = doctorsQuery.data?.pages[0]?.totalCount ?? totalLoaded;
   const hasActiveSearch = deferredSearchQuery.length > 0;
   const sourceLabel = doctorsQuery.data?.pages[0]?.source;
 
   const handleLoadMore = () => {
-    if (!doctorsQuery.hasNextPage || doctorsQuery.isFetchingNextPage) {
-      return;
-    }
-
-    void doctorsQuery.fetchNextPage();
-  };
-
-  const renderFooter = () => {
-    if (!doctorsQuery.isFetchingNextPage) {
-      return <View style={styles.footerSpacer} />;
-    }
-
-    return (
-      <View style={styles.footerLoader}>
-        <ActivityIndicator color={Colors.primary} />
-        <Text style={styles.footerText}>Loading more doctors...</Text>
-      </View>
+    // Reveal the next chunk from the already-cached list — no API call, so it
+    // works the same offline.
+    setVisibleCount((count) =>
+      count < doctors.length ? count + LIST_PAGE : count
     );
   };
+
+  const renderFooter = () => <View style={styles.footerSpacer} />;
+
+  // Institution mode replaces the doctor listing with group / walking calls.
+  if (callMode === 'institution') {
+    return (
+      <ScreenLayout title="Planned Calls" notificationCount={1}>
+        <InstitutionCallPanel />
+      </ScreenLayout>
+    );
+  }
 
   return (
     <ScreenLayout title="Planned Calls" notificationCount={1} scrollable={false}>
       <FlatList
-        data={doctors}
+        data={visibleDoctors}
         keyExtractor={(doctor) => doctor.id}
         renderItem={({ item }) => <DoctorCard doctor={item} callType="planned" onPress={() => {}} />}
         contentContainerStyle={styles.content}
@@ -134,7 +159,7 @@ export default function PlannedCalls() {
             {!doctorsQuery.isLoading && !doctorsQuery.isError && totalLoaded > 0 ? (
               <View style={styles.summaryBlock}>
                 <Text style={styles.summaryText}>
-                  Showing {totalLoaded} of {totalAvailable} assigned doctors for {user?.name ?? 'this rep'}.
+                  Showing {visibleDoctors.length} of {totalLoaded} assigned doctors for {user?.name ?? 'this rep'}.
                 </Text>
                 {sourceLabel === 'temporary-fallback' ? (
                   <Text style={styles.sourceHint}>

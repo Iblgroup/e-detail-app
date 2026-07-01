@@ -11,7 +11,7 @@ import { consumeReturnToNewDoctor } from '@/views/unplanned-calls/returnToNewDoc
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
-import { useCallback, useDeferredValue, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -22,6 +22,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
+
+// Doctors revealed per scroll, sliced from the fully-cached pool (no network).
+const LIST_PAGE = 30;
 
 const emptyNewDoctorForm = {
   name: '',
@@ -63,10 +66,17 @@ export default function UnplannedCalls() {
   const [newDoctorCallCompleted, setNewDoctorCallCompleted] = useState(false);
   const [activePendingDoctorId, setActivePendingDoctorId] = useState<string>();
   const [newDoctorDrafts, setNewDoctorDrafts] = useState<Record<string, typeof emptyNewDoctorForm>>({});
+  const [visibleCount, setVisibleCount] = useState(LIST_PAGE);
+  // No search query is sent to the API — the team pool is cached by the sync
+  // and filtered locally (offline-first; the screen never calls the API).
   const doctorsQuery = useInfiniteDoctors({
     teamId: user?.teamId,
-    query: deferredSearchQuery,
   });
+
+  // Restart paging when the search changes.
+  useEffect(() => {
+    setVisibleCount(LIST_PAGE);
+  }, [deferredSearchQuery]);
 
   const handlePendingNewDoctorReturn = useCallback((pendingDoctorId?: string) => {
     if (pendingDoctorId) {
@@ -120,14 +130,18 @@ export default function UnplannedCalls() {
   const doctors = useMemo(() => {
     const fetchedDoctors = mapDoctors(doctorsQuery.data?.pages.flatMap((page) => page.data) ?? []);
     const normalizedSearch = deferredSearchQuery.toLowerCase();
+    const matchesSearch = (doctor: Doctor) =>
+      [doctor.name, doctor.specialty, doctor.hospital, doctor.address].some(
+        (value) => value?.toLowerCase().includes(normalizedSearch)
+      );
     const filteredAddedDoctors = !normalizedSearch
       ? addedDoctors
-      : addedDoctors.filter((doctor) =>
-          [doctor.name, doctor.specialty, doctor.hospital, doctor.address]
-            .some((value) => value?.toLowerCase().includes(normalizedSearch))
-        );
+      : addedDoctors.filter(matchesSearch);
+    const filteredFetchedDoctors = !normalizedSearch
+      ? fetchedDoctors
+      : fetchedDoctors.filter(matchesSearch);
 
-    return [...filteredAddedDoctors, ...fetchedDoctors]
+    return [...filteredAddedDoctors, ...filteredFetchedDoctors]
       .map((doctor) => ({
         ...doctor,
         status:
@@ -138,8 +152,10 @@ export default function UnplannedCalls() {
       .sort((a, b) => Number(a.status === 'completed') - Number(b.status === 'completed'));
   }, [addedDoctors, completedCallIds, deferredSearchQuery, doctorsQuery.data?.pages]);
 
-  const totalLoadedTeamDoctors = doctorsQuery.data?.pages.flatMap((page) => page.data).length ?? 0;
-  const totalAvailableTeamDoctors = doctorsQuery.data?.pages[0]?.totalCount ?? totalLoadedTeamDoctors;
+  const visibleDoctors = useMemo(
+    () => doctors.slice(0, visibleCount),
+    [doctors, visibleCount]
+  );
   const hasActiveSearch = deferredSearchQuery.length > 0;
 
   const openPicker = () => {
@@ -225,30 +241,19 @@ export default function UnplannedCalls() {
   };
 
   const handleLoadMore = () => {
-    if (!doctorsQuery.hasNextPage || doctorsQuery.isFetchingNextPage) {
-      return;
-    }
-
-    void doctorsQuery.fetchNextPage();
-  };
-
-  const renderFooter = () => {
-    if (!doctorsQuery.isFetchingNextPage) {
-      return <View style={styles.footerSpacer} />;
-    }
-
-    return (
-      <View style={styles.footerLoader}>
-        <ActivityIndicator color={Colors.primary} />
-        <Text style={styles.footerText}>Loading more doctors...</Text>
-      </View>
+    // Reveal the next chunk from the already-cached pool — no API call, works
+    // the same offline.
+    setVisibleCount((count) =>
+      count < doctors.length ? count + LIST_PAGE : count
     );
   };
+
+  const renderFooter = () => <View style={styles.footerSpacer} />;
 
   return (
     <ScreenLayout title="Unplanned Calls" notificationCount={1} scrollable={false}>
       <FlatList
-        data={doctors}
+        data={visibleDoctors}
         keyExtractor={(doctor) => doctor.id}
         renderItem={({ item }) => (
           <DoctorCard
@@ -305,7 +310,7 @@ export default function UnplannedCalls() {
 
             {!doctorsQuery.isLoading && !doctorsQuery.isError && doctors.length > 0 ? (
               <Text style={styles.summaryText}>
-                Showing {totalLoadedTeamDoctors} of {totalAvailableTeamDoctors} team doctors for {user?.team ?? 'this team'}.
+                Showing {visibleDoctors.length} of {doctors.length} team doctors for {user?.team ?? 'this team'}.
               </Text>
             ) : null}
 
@@ -334,7 +339,7 @@ export default function UnplannedCalls() {
         ListFooterComponent={renderFooter}
       />
 
-      <Modal visible={pickerVisible} transparent animationType="fade" onRequestClose={closePicker}>
+      <Modal visible={pickerVisible} transparent animationType="fade" onRequestClose={() => closePicker()}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Add Unplanned Doctor</Text>

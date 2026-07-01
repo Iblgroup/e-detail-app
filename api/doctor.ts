@@ -37,6 +37,20 @@ interface DoctorRequestParams extends DoctorQueryParams {
 }
 
 const PAGE_SIZE = 30;
+// A rep's planned doctors for the day is a bounded set, so fetch it all in one
+// page. This keeps it fully available offline (no "load more" that fails with
+// no network) and matches what the sync caches.
+const PLANNED_PAGE_SIZE = 500;
+// Same idea for the team's unplanned doctor pool (capped for offline caching).
+const DOCTORS_PAGE_SIZE = 500;
+
+export const doctorsKey = (teamId?: number, mieId?: string, query?: string) =>
+  [
+    'doctors',
+    teamId ?? 'no-team',
+    mieId ?? 'no-mie',
+    query ?? 'no-query',
+  ] as const;
 
 const getDoctors = async ({
   mieId,
@@ -56,7 +70,19 @@ const getDoctors = async ({
   }) as unknown as Promise<DoctorDataResponse>;
 };
 
-const getPlannedDoctors = async ({
+export const plannedDoctorsKey = (
+  teamId?: number,
+  mieId?: string,
+  query?: string,
+) =>
+  [
+    'planned-doctors',
+    teamId ?? 'no-team',
+    mieId ?? 'no-mie',
+    query ?? 'no-query',
+  ] as const;
+
+export const getPlannedDoctors = async ({
   mieId,
   teamId,
   query,
@@ -74,9 +100,15 @@ const getPlannedDoctors = async ({
   }) as unknown as Promise<DoctorDataResponse>;
 };
 
+export const plannedDoctorsPageParams = {
+  initialPageParam: 0,
+  getNextPageParam: (lastPage: DoctorDataResponse) =>
+    lastPage.hasMore ? lastPage.offset + lastPage.count : undefined,
+};
+
 export const useInfiniteDoctors = ({ mieId, teamId, query }: DoctorQueryParams) => {
   return useInfiniteQuery({
-    queryKey: ['doctors', teamId ?? 'no-team', mieId ?? 'no-mie', query ?? 'no-query'],
+    queryKey: doctorsKey(teamId, mieId, query),
     initialPageParam: 0,
     queryFn: ({ pageParam }) =>
       getDoctors({
@@ -84,6 +116,7 @@ export const useInfiniteDoctors = ({ mieId, teamId, query }: DoctorQueryParams) 
         teamId,
         query,
         offset: pageParam,
+        limit: DOCTORS_PAGE_SIZE,
       }),
     getNextPageParam: (lastPage) =>
       lastPage.hasMore ? lastPage.offset + lastPage.count : undefined,
@@ -94,7 +127,7 @@ export const useInfiniteDoctors = ({ mieId, teamId, query }: DoctorQueryParams) 
 
 export const useInfinitePlannedDoctors = ({ mieId, teamId, query }: DoctorQueryParams) => {
   return useInfiniteQuery({
-    queryKey: ['planned-doctors', teamId ?? 'no-team', mieId ?? 'no-mie', query ?? 'no-query'],
+    queryKey: plannedDoctorsKey(teamId, mieId, query),
     initialPageParam: 0,
     queryFn: ({ pageParam }) =>
       getPlannedDoctors({
@@ -102,6 +135,7 @@ export const useInfinitePlannedDoctors = ({ mieId, teamId, query }: DoctorQueryP
         teamId,
         query,
         offset: pageParam,
+        limit: PLANNED_PAGE_SIZE,
       }),
     getNextPageParam: (lastPage) =>
       lastPage.hasMore ? lastPage.offset + lastPage.count : undefined,

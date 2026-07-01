@@ -8,6 +8,9 @@ import {
 } from 'react';
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
+import { queryClient } from '@/providers/QueryProvider';
+import { clearImageCache } from '@/lib/offline/imageCache';
+import { clearSyncMeta } from '@/lib/offline/syncMeta';
 
 export type UserRole = 'bm' | 'nsm' | 'sm' | 'rm' | 'rep';
 
@@ -77,7 +80,7 @@ const sessionFileUri = FileSystem.documentDirectory
   ? `${FileSystem.documentDirectory}e-detail-app-session.json`
   : null;
 
-function enrichUserFromDummyAccounts(user: AuthUser | null): AuthUser | null {
+export function enrichUserFromDummyAccounts(user: AuthUser | null): AuthUser | null {
   if (!user?.username) {
     return user;
   }
@@ -101,7 +104,7 @@ function enrichUserFromDummyAccounts(user: AuthUser | null): AuthUser | null {
   };
 }
 
-async function readStoredSession(): Promise<PersistedSession | null> {
+export async function readStoredSession(): Promise<PersistedSession | null> {
   try {
     if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
       const raw = localStorage.getItem(SESSION_STORAGE_KEY);
@@ -225,6 +228,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
     setUser(null);
     await writeStoredSession(null);
+    // Wipe cached data + downloaded images so the next user starts clean.
+    try {
+      queryClient.clear();
+      await clearImageCache();
+      await clearSyncMeta();
+    } catch (error) {
+      console.warn('[Auth] Failed to clear offline caches on logout', error);
+    }
   };
 
   const value = useMemo<AuthContextValue>(

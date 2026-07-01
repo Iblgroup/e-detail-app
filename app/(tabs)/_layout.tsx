@@ -6,6 +6,11 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
+// Default tab after entering (tabs) is Analytics.
+export const unstable_settings = {
+  initialRouteName: 'analytics',
+};
+
 export default function TabLayout() {
   const colorScheme = useColorScheme();
 
@@ -18,10 +23,10 @@ export default function TabLayout() {
         tabBarLabelStyle: { fontSize: 14 },
       }}>
       <Tabs.Screen
-        name="index"
+        name="analytics"
         options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="house.fill" color={color} />,
+          title: 'Analytics',
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="chart.bar.xaxis" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -39,11 +44,29 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="analytics"
+        name="settings"
         options={{
-          title: 'Analytics',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="chart.bar.xaxis" color={color} />,
+          title: 'Settings',
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="gearshape.fill" color={color} />,
         }}
+      />
+
+      {/* Doctor detail lives inside the tabs so the bottom nav stays visible. */}
+      <Tabs.Screen
+        name="doctor/[id]"
+        options={{ href: null }}
+      />
+
+      {/* Call analytics lives inside the tabs so the bottom nav stays visible. */}
+      <Tabs.Screen
+        name="call-analytics/[id]"
+        options={{ href: null }}
+      />
+
+      {/* Dashboard hidden for now (route kept; tab removed via href: null). */}
+      <Tabs.Screen
+        name="index"
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="faqs"
@@ -52,13 +75,6 @@ export default function TabLayout() {
       <Tabs.Screen
         name="ai-trainer"
         options={{ href: null }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: 'Settings',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="gearshape.fill" color={color} />,
-        }}
       />
       <Tabs.Screen
         name="explore"

@@ -10,14 +10,7 @@ interface CallHeaderProps {
   onEndCall?: () => void;
 }
 
-function formatTime(seconds: number) {
-  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-  const s = (seconds % 60).toString().padStart(2, '0');
-  return `${m}:${s}`;
-}
-
 export function CallHeader({
-  elapsedSeconds = 0,
   canEndCall = true,
   onEndCall,
 }: CallHeaderProps) {
@@ -50,16 +43,8 @@ export function CallHeader({
         </Svg>
       </View>
       <View style={styles.bar}>
-        <View style={styles.left}>
-          <View style={styles.liveBadge}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveText}>LIVE CALL</Text>
-          </View>
-          <View style={styles.timerRow}>
-            <Ionicons name="time-outline" size={13} color="rgba(255,255,255,0.6)" />
-            <Text style={styles.timer}>{formatTime(elapsedSeconds)}</Text>
-          </View>
-        </View>
+        {/* LIVE CALL pill + timer hidden */}
+        <View style={styles.left} />
 
         <View style={styles.right}>
           <Pressable
@@ -67,8 +52,8 @@ export function CallHeader({
             style={[styles.endCallBtn, !canEndCall && styles.endCallBtnDisabled]}
             onPress={handleEndCall}
           >
-            <Ionicons name="call-outline" size={14} color="#FFFFFF" />
-            <Text style={styles.endCallText}>End Call</Text>
+            <Ionicons name="close" size={16} color="#FFFFFF" />
+            <Text style={styles.endCallText}>Close</Text>
           </Pressable>
         </View>
       </View>
@@ -143,7 +128,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#EF4444',
+    backgroundColor: '#111827',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,

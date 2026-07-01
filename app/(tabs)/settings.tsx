@@ -2,9 +2,25 @@ import { AppButton } from '@/components/ui/AppButton';
 import { ScreenLayout } from '@/components/ui/ScreenLayout';
 import { Colors } from '@/constants/theme';
 import { ROLE_LABELS, useAuth } from '@/providers/AuthProvider';
+import { useSync } from '@/providers/SyncProvider';
+import { useCallMode, type CallMode } from '@/lib/settings/callModeStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { StyleSheet, Switch, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, Text, TextInput, useWindowDimensions, View } from 'react-native';
+
+function formatSyncedAt(iso: string | null): string {
+  if (!iso) return 'Never';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
 
 interface SettingsCardProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -67,10 +83,21 @@ function SecurityRow({ label, value, onValueChange }: SecurityRowProps) {
   );
 }
 
+const CALL_MODE_OPTIONS: {
+  key: CallMode;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}[] = [
+  { key: 'territory', label: 'Territory', icon: 'map-outline' },
+  { key: 'institution', label: 'Institution', icon: 'business-outline' },
+];
+
 export default function SettingsScreen() {
   const { width } = useWindowDimensions();
   const isWide = width >= 760;
   const { user, logout } = useAuth();
+  const { lastSyncedAt, isOnline, status, syncNow } = useSync();
+  const { callMode, setCallMode } = useCallMode();
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(true);
   const [sessionTimeoutEnabled, setSessionTimeoutEnabled] = useState(true);
@@ -137,6 +164,65 @@ export default function SettingsScreen() {
               label="Update Password"
               onPress={() => {}}
               icon={<Ionicons name="arrow-forward" size={18} color={Colors.textOnDark} />}
+              style={styles.updateButton}
+            />
+          </SettingsCard>
+
+          <SettingsCard icon="swap-horizontal-outline" title="Call Type">
+            <Text style={styles.callModeHint}>
+              Choose how planned calls are made.
+            </Text>
+            <View style={styles.segment}>
+              {CALL_MODE_OPTIONS.map((option) => {
+                const active = callMode === option.key;
+                return (
+                  <Pressable
+                    key={option.key}
+                    onPress={() => setCallMode(option.key)}
+                    style={({ pressed }) => [
+                      styles.segmentButton,
+                      active && styles.segmentButtonActive,
+                      pressed && styles.segmentPressed,
+                    ]}
+                  >
+                    <Ionicons
+                      name={option.icon}
+                      size={18}
+                      color={active ? Colors.textOnDark : Colors.primary}
+                    />
+                    <Text
+                      style={[
+                        styles.segmentText,
+                        active && styles.segmentTextActive,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </SettingsCard>
+
+          <SettingsCard icon="cloud-offline-outline" title="Offline Data">
+            <View style={styles.securityRow}>
+              <Text style={styles.securityLabel}>Connection</Text>
+              <Text style={styles.accountValue}>
+                {isOnline ? 'Online' : 'Offline'}
+              </Text>
+            </View>
+            <View style={styles.securityRow}>
+              <Text style={styles.securityLabel}>Last synced</Text>
+              <Text style={styles.accountValue}>
+                {formatSyncedAt(lastSyncedAt)}
+              </Text>
+            </View>
+            <AppButton
+              label={status === 'syncing' ? 'Syncing…' : 'Sync now'}
+              onPress={() => void syncNow()}
+              icon={
+                <Ionicons name="sync-outline" size={18} color={Colors.textOnDark} />
+              }
               style={styles.updateButton}
             />
           </SettingsCard>
@@ -245,6 +331,41 @@ const styles = StyleSheet.create({
     minHeight: 40,
     paddingHorizontal: 18,
     marginTop: 4,
+  },
+  callModeHint: {
+    color: Colors.textMuted,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  segment: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  segmentButton: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    backgroundColor: 'transparent',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  segmentButtonActive: {
+    backgroundColor: Colors.primary,
+  },
+  segmentPressed: {
+    opacity: 0.85,
+  },
+  segmentText: {
+    color: Colors.primary,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  segmentTextActive: {
+    color: Colors.textOnDark,
   },
   securityRow: {
     minHeight: 38,

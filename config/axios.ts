@@ -36,7 +36,15 @@ axios.interceptors.response.use(
     const status = error.response?.status;
     const message = error.response?.data?.message || error.message;
 
-    console.error(`[API Error] ${status || 'Network Error'}:`, error.response?.data || message);
+    if (status) {
+      // A real HTTP error from the server.
+      console.error(`[API Error] ${status}:`, error.response?.data || message);
+    } else {
+      // No response = offline / server unreachable. Expected in offline mode;
+      // log quietly so it doesn't surface as a red error overlay. Cached data
+      // is served by React Query regardless.
+      console.log(`[API] offline/unreachable: ${message}`);
+    }
     return Promise.reject(error);
   },
 );

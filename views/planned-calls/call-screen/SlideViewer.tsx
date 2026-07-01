@@ -182,17 +182,7 @@ export function SlideViewer({
         </View>
 
         <View style={styles.centerRail}>
-          <Pressable
-            onPress={onTogglePause}
-            style={[styles.pauseButton, isPaused ? styles.resumeButton : styles.pauseButtonActive]}
-          >
-            <Ionicons
-              name={isPaused ? 'play-outline' : 'pause-outline'}
-              size={18}
-              color="#FFFFFF"
-            />
-            <Text style={styles.pauseButtonLabel}>{isPaused ? 'Resume' : 'Pause'}</Text>
-          </Pressable>
+          {/* Pause/Resume button hidden */}
 
           <View style={styles.slideTimer}>
             <View style={styles.slideTimerHeader}>
