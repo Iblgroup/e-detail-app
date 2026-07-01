@@ -19,7 +19,7 @@ interface CallTypeOption {
 
 const CALL_TYPES: CallTypeOption[] = [
   { key: 'group', label: 'Group Call', icon: 'people-outline', disabled: true },
-  { key: 'walking', label: 'Walking Call', icon: 'walk-outline' },
+  { key: 'walking', label: 'Walking/Parking Call', icon: 'car-outline' },
 ];
 
 export function InstitutionCallPanel() {
