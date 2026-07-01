@@ -6,7 +6,11 @@ import { useSync } from '@/providers/SyncProvider';
 import { useCallMode, type CallMode } from '@/lib/settings/callModeStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Switch, Text, TextInput, useWindowDimensions, View, type ViewStyle } from 'react-native';
+
+// react-native-web supports `position: sticky`, but RN's ViewStyle type doesn't
+// list it — cast to keep the account card pinned while the page scrolls (web).
+const STICKY_SIDE_COLUMN = { position: 'sticky', top: 16 } as unknown as ViewStyle;
 
 function formatSyncedAt(iso: string | null): string {
   if (!iso) return 'Never';
@@ -109,7 +113,13 @@ export default function SettingsScreen() {
       contentStyle={styles.content}
     >
       <View style={[styles.grid, isWide && styles.gridWide]}>
-        <View style={[styles.sideColumn, isWide && styles.sideColumnWide]}>
+        <View
+          style={[
+            styles.sideColumn,
+            isWide && styles.sideColumnWide,
+            isWide && Platform.OS === 'web' && STICKY_SIDE_COLUMN,
+          ]}
+        >
           <View style={styles.accountCard}>
             <View style={styles.avatar}>
               <Ionicons name="person-outline" size={34} color={Colors.primary} />
