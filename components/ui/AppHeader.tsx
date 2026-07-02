@@ -46,6 +46,7 @@ export function AppHeader({
       </View>
 
       <View style={styles.right}>
+        {/* Notification bell hidden for now — restore when notifications ship.
         <Pressable style={styles.bellWrapper} onPress={onNotification}>
           <Ionicons name="notifications-outline" size={20} color={Colors.secondary} />
           {notificationCount > 0 && (
@@ -54,6 +55,7 @@ export function AppHeader({
             </View>
           )}
         </Pressable>
+        */}
         {action}
       </View>
     </View>
