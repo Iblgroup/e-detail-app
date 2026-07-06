@@ -14,6 +14,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { loadImageManifest, type DownloadProgress } from '@/lib/offline/imageCache';
 import { getSyncMeta, todayWorkday } from '@/lib/offline/syncMeta';
 import { runSync } from '@/lib/offline/runSync';
+import { seedPlannedFromBulk } from '@/lib/offline/plannedBulk';
 
 type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
 
@@ -77,6 +78,14 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     });
     return unsubscribe;
   }, []);
+
+  // Seed the Planned screen from the on-device bulk cache as soon as we know the
+  // rep, so their planned calls render offline even if they never synced
+  // individually. Only fills an empty cache (won't clobber a fresh online fetch).
+  useEffect(() => {
+    if (!isHydrated || !user?.mieId || !user?.teamId) return;
+    void seedPlannedFromBulk(Number(user.teamId), String(user.mieId));
+  }, [isHydrated, user?.mieId, user?.teamId]);
 
   const syncNow = useCallback(async () => {
     if (runningRef.current) return;

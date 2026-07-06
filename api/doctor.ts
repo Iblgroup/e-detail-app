@@ -12,6 +12,13 @@ export interface DoctorDataRow {
   SpecialtyByCommercial?: string;
   SpecialtyByIkon?: string;
   CITY?: string;
+  // Doctor clinic location (stored as text in the DB). Day + evening clinics,
+  // used to flag whether the rep's arrival GPS is within the clinic vicinity.
+  DocLat?: string;
+  DocLng?: string;
+  DocEveLat?: string;
+  DocEveLng?: string;
+  ClinicAddress?: string;
 }
 
 export interface DoctorDataResponse {

@@ -11,6 +11,10 @@ import { queueReturnToNewDoctor } from '@/views/unplanned-calls/returnToNewDocto
 import { DoctorCallSlide, useForcingSlides } from '@/api/content';
 import { useTeamSkus } from '@/api/sku';
 import { useInfiniteDoctors } from '@/api/doctor';
+import { useAuth } from '@/providers/AuthProvider';
+import { enqueueCall } from '@/lib/offline/outbox';
+import { nearestClinicVicinity } from '@/lib/location/distance';
+import type { CallTrackingInput } from '@/api/calls';
 
 const DEMO_SLIDES: Slide[] = [
   {
@@ -53,6 +57,11 @@ interface CallScreenProps {
   // Institution call type ('walking' | 'group'); when set, the summary requires
   // picking a doctor from the team.
   institutionType?: string;
+  // Location captured when the rep marked "Arrived" (offline-capable GPS).
+  arrivedLatitude?: number;
+  arrivedLongitude?: number;
+  arrivedTime?: string;
+  arrivedLocation?: string;
 }
 
 function mapForcingSlides(slides: DoctorCallSlide[]): Slide[] {
@@ -83,27 +92,49 @@ export default function CallScreen({
   specialtyId,
   teamId,
   institutionType,
+  arrivedLatitude,
+  arrivedLongitude,
+  arrivedTime,
+  arrivedLocation,
 }: CallScreenProps) {
+  const { user } = useAuth();
   const isInstitutionCall = Boolean(institutionType);
   const hasForcingContext = Boolean(teamId && specialtyId);
   const forcingSlidesQuery = useForcingSlides({ teamId, doctorSpecId: specialtyId });
   // The team's SKUs, for the "Samples Provided" picker.
   const sampleOptions = useTeamSkus(teamId).data ?? [];
-  // For institution calls, the summary requires picking a doctor from the team's
-  // (cached) doctor pool. Only enabled for institution calls.
-  const teamDoctorsQuery = useInfiniteDoctors({
-    teamId: isInstitutionCall ? teamId : undefined,
-  });
+  // The team's (cached) doctor pool. Institution calls require picking a doctor
+  // from it; all calls use it to resolve the real doctorid + specialty needed to
+  // record the call to call_tracking.
+  const teamDoctorsQuery = useInfiniteDoctors({ teamId });
+  // When the call screen mounts is our best proxy for the call start time.
+  const callStartRef = useRef(new Date().toISOString());
+  const teamRows = useMemo(
+    () => teamDoctorsQuery.data?.pages.flatMap((page) => page.data) ?? [],
+    [teamDoctorsQuery.data?.pages],
+  );
   const doctorOptions = useMemo(() => {
-    const rows = teamDoctorsQuery.data?.pages.flatMap((page) => page.data) ?? [];
     return [
       ...new Set(
-        rows
+        teamRows
           .map((row) => String(row.DOCTORNAME ?? '').trim())
           .filter(Boolean)
       ),
     ].sort((a, b) => a.localeCompare(b));
-  }, [teamDoctorsQuery.data?.pages]);
+  }, [teamRows]);
+  // Resolve a doctor row by id (planned/known calls) or by name (institution
+  // calls where the doctor is chosen in the summary).
+  const doctorById = useMemo(
+    () => new Map(teamRows.map((row) => [String(row.DOCTORID ?? ''), row])),
+    [teamRows],
+  );
+  const doctorByName = useMemo(
+    () =>
+      new Map(
+        teamRows.map((row) => [String(row.DOCTORNAME ?? '').trim().toLowerCase(), row]),
+      ),
+    [teamRows],
+  );
   const slides = !hasForcingContext
     ? DEMO_SLIDES
     : forcingSlidesQuery.data && forcingSlidesQuery.data.length > 0
@@ -126,6 +157,116 @@ export default function CallScreen({
     setSlidesViewed((previous) => Math.max(previous, count));
   }, []);
 
+  // Build a full call_tracking payload and hand it to the offline outbox.
+  const recordCallToOutbox = useCallback(
+    async (summary: CallSummaryData, effectiveDoctorName?: string) => {
+      const tsoid = user?.mieId ? String(user.mieId) : '';
+      if (!tsoid) return; // can't attribute the call without a rep (tso) id
+
+      // Resolve the real doctorid (FK to doctors). Institution calls resolve by
+      // the chosen name; others by the incoming id.
+      const selectedRow =
+        isInstitutionCall && effectiveDoctorName
+          ? doctorByName.get(effectiveDoctorName.trim().toLowerCase())
+          : doctorById.get(String(doctorId ?? ''));
+      const resolvedDoctorId = selectedRow
+        ? String(selectedRow.DOCTORID ?? '')
+        : String(doctorId ?? '');
+
+      // call_tracking.doctorid is a FK to doctors — only real (numeric) ids can
+      // be recorded. Brand-new unplanned doctors (synthetic ids) are skipped
+      // until they exist in the doctors table.
+      if (!/^\d+$/.test(resolvedDoctorId)) return;
+
+      const slideLabels = slides.map(getAnalyticsSlideLabel);
+      const eachSlideTime: Record<string, number> = {};
+      slideLabels.forEach((label, index) => {
+        eachSlideTime[label] = slideTimes[index] ?? 0;
+      });
+      const slidesTotalSeconds = slideTimes.reduce((sum, n) => sum + (n || 0), 0);
+      const jointCall = (summary.jointCall ?? '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter((value) => value && value.toLowerCase() !== 'no');
+      const sampleProvided = Boolean(
+        summary.samplesProvided && summary.samplesProvided !== 'None',
+      );
+
+      // Flag whether the rep's arrival GPS was within 50m of the doctor's clinic
+      // (checks both day + evening locations). null when GPS or clinic coords are
+      // missing. Out-of-vicinity calls are recorded and flagged, never blocked.
+      const vicinity = nearestClinicVicinity(
+        { latitude: arrivedLatitude, longitude: arrivedLongitude },
+        {
+          dayLat: selectedRow?.DocLat,
+          dayLng: selectedRow?.DocLng,
+          eveLat: selectedRow?.DocEveLat,
+          eveLng: selectedRow?.DocEveLng,
+        },
+      );
+
+      const payload: CallTrackingInput = {
+        tsoid,
+        doctorid: resolvedDoctorId,
+        doctor_name: effectiveDoctorName || selectedRow?.DOCTORNAME || undefined,
+        doctor_specialty:
+          selectedRow?.SpecialtyByCommercial ||
+          selectedRow?.SpecialtyByIkon ||
+          undefined,
+        // Arrival GPS captured on the "Arrived" tap (works offline).
+        latitude: arrivedLatitude,
+        longitude: arrivedLongitude,
+        // arrived_location = the doctor's clinic address; fall back to the
+        // reverse-geocoded address of where the rep actually was.
+        arrived_location: selectedRow?.ClinicAddress || arrivedLocation || undefined,
+        arrived_time: arrivedTime || undefined,
+        arrived_within_vicinity: vicinity?.withinVicinity,
+        arrived_distance_meters: vicinity?.distanceMeters,
+        call_start_time: callStartRef.current,
+        call_end_time: new Date().toISOString(),
+        total_call_time_seconds: elapsedSeconds,
+        total_slides_count: slides.length,
+        shown_slides_count: slidesViewed,
+        slides_total_time_seconds: slidesTotalSeconds,
+        each_slide_time: eachSlideTime,
+        brand: slides[0]?.brand || undefined,
+        join_call: jointCall,
+        sample_provided: sampleProvided,
+        samples_json: sampleProvided
+          ? { samples: [summary.samplesProvided] }
+          : { samples: [] },
+        feedback: summary.feedback || undefined,
+        call_type: callType,
+        institution_call_type: institutionType || undefined,
+        created_by: Number(user?.userId) || undefined,
+      };
+
+      try {
+        await enqueueCall(payload);
+      } catch (error) {
+        console.warn('[call] failed to queue call for sync', error);
+      }
+    },
+    [
+      user?.mieId,
+      user?.userId,
+      isInstitutionCall,
+      doctorByName,
+      doctorById,
+      doctorId,
+      slides,
+      slideTimes,
+      elapsedSeconds,
+      slidesViewed,
+      callType,
+      institutionType,
+      arrivedLatitude,
+      arrivedLongitude,
+      arrivedTime,
+      arrivedLocation,
+    ],
+  );
+
   const handleSubmitSummary = useCallback(
     (summary: CallSummaryData) => {
       if (hasEndedRef.current) return;
@@ -144,6 +285,10 @@ export default function CallScreen({
         slideTimes,
         slideLabels: slides.map(getAnalyticsSlideLabel),
       });
+
+      // Durably record the call to the outbox (written locally first, then
+      // synced to call_tracking when online). Best-effort: never block the UI.
+      void recordCallToOutbox(summary, effectiveDoctorName);
 
       if (callType === 'unplanned' && returnToNewDoctor) {
         queueReturnToNewDoctor(doctorId ?? 'unknown');
@@ -179,6 +324,7 @@ export default function CallScreen({
       slideTimes,
       slides,
       slidesViewed,
+      recordCallToOutbox,
     ]
   );
 

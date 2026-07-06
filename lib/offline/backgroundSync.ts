@@ -1,7 +1,7 @@
 import * as BackgroundTask from 'expo-background-task';
 import * as TaskManager from 'expo-task-manager';
 
-import { readStoredSession, enrichUserFromDummyAccounts } from '@/providers/AuthProvider';
+import { readStoredSession } from '@/providers/AuthProvider';
 import { runSync } from '@/lib/offline/runSync';
 import { getSyncMeta, todayWorkday } from '@/lib/offline/syncMeta';
 
@@ -25,7 +25,7 @@ TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
 
     // Need a signed-in rep with a team + MIE id to sync anything.
     const session = await readStoredSession();
-    const user = enrichUserFromDummyAccounts(session?.user ?? null);
+    const user = session?.user ?? null;
     if (!session?.token || !user?.mieId || !user?.teamId) {
       return BackgroundTask.BackgroundTaskResult.Success;
     }

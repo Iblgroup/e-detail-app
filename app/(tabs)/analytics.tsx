@@ -40,8 +40,21 @@ const rfiData = {
   completed: 284,
 };
 
+function formatRangeLabel(start: Date, end: Date) {
+  const opts: Intl.DateTimeFormatOptions = {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  };
+  const startText = start.toLocaleDateString(undefined, opts);
+  const endText = end.toLocaleDateString(undefined, opts);
+  return startText === endText ? startText : `${startText} – ${endText}`;
+}
+
 export default function AnalyticsScreen() {
-  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  // Analytics is scoped to a date range (start → end); default to today.
+  const [startDate, setStartDate] = useState(() => new Date());
+  const [endDate, setEndDate] = useState(() => new Date());
   const [isExporting, setIsExporting] = useState(false);
   const outstandingCalls = Math.max(0, rfiData.planned - rfiData.completed);
   const rfiCompletion = rfiData.planned > 0
@@ -53,11 +66,7 @@ export default function AnalyticsScreen() {
     setIsExporting(true);
     try {
       await exportAnalyticsPdf({
-        dateLabel: selectedDate.toLocaleDateString(undefined, {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        }),
+        dateLabel: formatRangeLabel(startDate, endDate),
         metrics,
         rfi: rfiData,
         specialty: specialtyData,
@@ -77,18 +86,42 @@ export default function AnalyticsScreen() {
       contentStyle={styles.content}
     >
       <View style={styles.headerActions}>
-        <View style={styles.periodSelectWrap}>
-          <AppCalendarSheet
-            value={selectedDate}
-            onChange={setSelectedDate}
-            title="Select Date"
-            chevronColor={Colors.primary}
-            triggerStyle={styles.periodButton}
-            triggerContentStyle={styles.periodButtonContent}
-            triggerTextStyle={styles.periodButtonText}
-          />
+        <View style={styles.datesGroup}>
+          <View style={styles.dateFieldWrap}>
+            <Text style={styles.dateFieldLabel}>Start Date</Text>
+            <AppCalendarSheet
+              value={startDate}
+              onChange={(next) => {
+                setStartDate(next);
+                // Keep the range valid: pull the end up if it fell behind.
+                if (next > endDate) setEndDate(next);
+              }}
+              title="Select Start Date"
+              chevronColor={Colors.primary}
+              triggerStyle={styles.periodButton}
+              triggerContentStyle={styles.periodButtonContent}
+              triggerTextStyle={styles.periodButtonText}
+            />
+          </View>
+          <View style={styles.dateFieldWrap}>
+            <Text style={styles.dateFieldLabel}>End Date</Text>
+            <AppCalendarSheet
+              value={endDate}
+              onChange={(next) => {
+                setEndDate(next);
+                // Keep the range valid: pull the start back if it overtook.
+                if (next < startDate) setStartDate(next);
+              }}
+              title="Select End Date"
+              chevronColor={Colors.primary}
+              triggerStyle={styles.periodButton}
+              triggerContentStyle={styles.periodButtonContent}
+              triggerTextStyle={styles.periodButtonText}
+            />
+          </View>
         </View>
-        <View style={styles.exportButtonWrap}>
+        <View style={styles.exportFieldWrap}>
+          <Text style={styles.dateFieldLabel} />
           <AppButton
             label={isExporting ? 'Preparing…' : 'Export PDF'}
             onPress={handleExportPdf}
@@ -188,11 +221,34 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     gap: 12,
-    alignItems: 'stretch',
+    alignItems: 'flex-end',
   },
-  periodSelectWrap: {
+  // Left 50%: the two date pickers share this half.
+  datesGroup: {
     flex: 1,
     flexBasis: 0,
+    flexDirection: 'row',
+    gap: 12,
+  },
+  dateFieldWrap: {
+    flex: 1,
+    flexBasis: 0,
+    gap: 6,
+  },
+  // Right 50%: the export button.
+  exportFieldWrap: {
+    flex: 1,
+    flexBasis: 0,
+    gap: 6,
+  },
+  dateFieldLabel: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginLeft: 2,
+    minHeight: 15,
   },
   periodButton: {
     width: '100%',
@@ -210,10 +266,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     color: Colors.primary,
-  },
-  exportButtonWrap: {
-    flex: 1,
-    flexBasis: 0,
   },
   exportButton: {
     width: '100%',

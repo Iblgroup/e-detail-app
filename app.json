@@ -47,7 +47,14 @@
           }
         }
       ],
-      "expo-background-task"
+      "expo-background-task",
+      "expo-sqlite",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow $(PRODUCT_NAME) to record your location when you mark yourself as arrived for a doctor call."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

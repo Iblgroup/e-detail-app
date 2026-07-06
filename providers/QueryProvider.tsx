@@ -15,22 +15,29 @@ onlineManager.setEventListener((setOnline) => {
   return unsubscribe;
 });
 
+// How long fetched data is considered fresh before a background refetch.
+const FIVE_MIN_MS = 1000 * 60 * 5;
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
-      // Offline-first: data only ever changes via the sync. The screens read
-      // from the cache the sync seeded and never auto-refetch, so the only
-      // network call is /sync/daily (in runSync).
-      staleTime: Infinity,
+      // Online-first: when connected, hit the live API and refetch on mount /
+      // reconnect. When offline, React Query pauses fetches and the screens keep
+      // rendering from the persisted cache (the offline fallback). The cache is
+      // still warmed once at login by runSync so the first offline day works.
+      staleTime: FIVE_MIN_MS,
       gcTime: WEEK_MS,
-      refetchOnMount: false,
-      refetchOnReconnect: false,
+      refetchOnMount: true,
+      refetchOnReconnect: true,
       refetchOnWindowFocus: false,
-      networkMode: 'offlineFirst',
+      networkMode: 'online',
     },
     mutations: {
-      networkMode: 'offlineFirst',
+      // Call submissions never go through React Query mutations directly — they
+      // are written to the SQLite outbox first, then flushed. Keep 'online' so
+      // any incidental mutation only runs when connected.
+      networkMode: 'online',
     },
   },
 });

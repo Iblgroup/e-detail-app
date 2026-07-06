@@ -7,6 +7,7 @@ import { Colors } from '@/constants/theme';
 import { useAuth } from '@/providers/AuthProvider';
 import { useCallMode } from '@/lib/settings/callModeStore';
 import { DoctorDataRow, useInfinitePlannedDoctors } from '@/api/doctor';
+import { savePlannedForMie, seedPlannedFromBulk } from '@/lib/offline/plannedBulk';
 import { ScheduleSectionHeader } from './ScheduleSectionHeader';
 import { DoctorCard, Doctor } from './DoctorCard';
 import { InstitutionCallPanel } from './InstitutionCallPanel';
@@ -51,6 +52,29 @@ export default function PlannedCalls() {
     mieId: user?.mieId,
     teamId: user?.teamId,
   });
+
+  // The raw planned rows currently in cache (from online fetch, sync, or bulk).
+  const plannedRows = useMemo(
+    () => doctorsQuery.data?.pages.flatMap((page) => page.data) ?? [],
+    [doctorsQuery.data?.pages]
+  );
+
+  // Persist this rep's loaded planned list locally so it survives logout and is
+  // restored on the next login — even offline. Keyed by mieId.
+  useEffect(() => {
+    if (user?.mieId && plannedRows.length > 0) {
+      void savePlannedForMie(String(user.mieId), plannedRows);
+    }
+  }, [user?.mieId, plannedRows]);
+
+  // If the list is empty (e.g. just re-logged in offline after logout cleared
+  // the cache), restore it from the on-device bulk store. seedPlannedFromBulk
+  // only fills an empty cache, so this is safe to run alongside online fetches.
+  useEffect(() => {
+    if (user?.mieId && user?.teamId && plannedRows.length === 0) {
+      void seedPlannedFromBulk(Number(user.teamId), String(user.mieId));
+    }
+  }, [user?.mieId, user?.teamId, plannedRows.length]);
 
   // Restart paging when the search changes.
   useEffect(() => {

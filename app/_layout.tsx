@@ -11,6 +11,7 @@ import { Colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
 import { AppQueryProvider } from '@/providers/QueryProvider';
 import { SyncProvider } from '@/providers/SyncProvider';
+import { OutboxProvider } from '@/providers/OutboxProvider';
 import { SyncGate } from '@/components/ui/SyncGate';
 import { registerBackgroundSync } from '@/lib/offline/backgroundSync';
 import config from '../tamagui.config';
@@ -73,14 +74,16 @@ export default function RootLayout() {
   return (
     <AppQueryProvider>
       <AuthProvider>
-        <SyncProvider>
-          <TamaguiProvider config={config} defaultTheme={colorScheme === 'dark' ? 'dark' : 'light'}>
-            <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-              <AuthGate />
-              <StatusBar style="auto" />
-            </ThemeProvider>
-          </TamaguiProvider>
-        </SyncProvider>
+        <OutboxProvider>
+          <SyncProvider>
+            <TamaguiProvider config={config} defaultTheme={colorScheme === 'dark' ? 'dark' : 'light'}>
+              <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+                <AuthGate />
+                <StatusBar style="auto" />
+              </ThemeProvider>
+            </TamaguiProvider>
+          </SyncProvider>
+        </OutboxProvider>
       </AuthProvider>
     </AppQueryProvider>
   );

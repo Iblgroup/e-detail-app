@@ -8,27 +8,41 @@ import {
 } from 'react';
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
-import { queryClient } from '@/providers/QueryProvider';
-import { clearImageCache } from '@/lib/offline/imageCache';
-import { clearSyncMeta } from '@/lib/offline/syncMeta';
+import axios from '@/config/axios';
+import {
+  saveOfflineCredential,
+  verifyOfflineCredential,
+} from '@/lib/offline/offlineAuth';
+import {
+  saveOfflineUsers,
+  verifyOfflineUser,
+  type OfflineUserRecord,
+} from '@/lib/offline/offlineUsers';
+import { bootstrapPlannedBulk } from '@/lib/offline/plannedBulk';
+import { OFFLINE_SYNC_KEY } from '@/config/app-sync';
 
-export type UserRole = 'bm' | 'nsm' | 'sm' | 'rm' | 'rep';
+/**
+ * The mobile app is used exclusively by TSOs / MIEs (field reps), so the only
+ * role we surface here is 'rep'. Login is authenticated against the shared
+ * `user_validation` backend (POST /api/auth/login).
+ */
+export type UserRole = 'rep';
 
 export const ROLE_LABELS: Record<UserRole, string> = {
-  bm: 'Business Manager',
-  nsm: 'National Sales Manager',
-  sm: 'Sales Manager',
-  rm: 'Regional Manager',
   rep: 'Medical Rep',
 };
 
 export interface AuthUser {
+  userId: number | string;
   username: string;
   name: string;
+  email?: string;
   role: UserRole;
+  /** Team name (display), e.g. "TITANS EXTOR". */
   team?: string;
-  sapId?: string;
+  /** tso_staff.tsoid — used as the MIE id by the sync/planned flows. */
   mieId?: string;
+  /** new_teams.teamid the TSO belongs to. */
   teamId?: number;
 }
 
@@ -50,58 +64,128 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-type DummyAccount = AuthUser & { password: string };
-
-const DUMMY_ACCOUNTS: DummyAccount[] = [
-  {
-    username: 'abdullah',
-    password: 'abdullah123',
-    name: 'Abdullah Bin Sohail',
-    role: 'rep',
-    team: 'TITANS EXTOR',
-    sapId: '11004745',
-    mieId: '20806',
-    teamId: 9,
-  },
-  {
-    username: 'abdulghaffar',
-    password: 'abdulghaffar123',
-    name: 'Abdul Ghaffar',
-    role: 'rep',
-    team: 'VIBRANT',
-    sapId: '11003762',
-    mieId: '6502500',
-    teamId: 5,
-  },
-];
+interface LoginResponse {
+  success: boolean;
+  message?: string;
+  user: {
+    userId: number | string;
+    username: string;
+    displayName?: string;
+    email?: string;
+    teamId?: number | string | null;
+    teamName?: string | null;
+    mieId?: number | string | null;
+  };
+  roles: { id: number; name: string }[];
+}
 
 const SESSION_STORAGE_KEY = 'e_detail_app_session';
 const sessionFileUri = FileSystem.documentDirectory
   ? `${FileSystem.documentDirectory}e-detail-app-session.json`
   : null;
 
-export function enrichUserFromDummyAccounts(user: AuthUser | null): AuthUser | null {
-  if (!user?.username) {
-    return user;
+/**
+ * Authenticate against the shared backend. Only TSO/MIE users can use the app,
+ * so we require the login to resolve a `mieId` (tso_staff.tsoid) + `teamId`;
+ * otherwise the account isn't a field rep and can't sync any doctors.
+ */
+async function apiLogin(
+  username: string,
+  password: string,
+): Promise<PersistedSession> {
+  let payload: LoginResponse;
+  try {
+    // The axios response interceptor already unwraps `response.data`.
+    payload = (await axios.post('/auth/login', {
+      username: username.trim(),
+      password,
+    })) as unknown as LoginResponse;
+  } catch (error: any) {
+    const message =
+      error?.response?.data?.message ||
+      error?.message ||
+      'Unable to sign in. Please try again.';
+    const wrapped = new Error(message) as Error & { isNetworkError?: boolean };
+    // No `response` means the request never reached the server (offline /
+    // unreachable), as opposed to a real 401/403 from the backend.
+    wrapped.isNetworkError = !error?.response;
+    throw wrapped;
   }
 
-  const matchingAccount = DUMMY_ACCOUNTS.find(
-    (candidate) => candidate.username.toLowerCase() === user.username.toLowerCase(),
-  );
-
-  if (!matchingAccount) {
-    return user;
+  if (!payload?.success || !payload.user) {
+    throw new Error(payload?.message || 'Invalid username or password');
   }
+
+  const { user: u } = payload;
+  if (u.mieId == null || u.teamId == null) {
+    throw new Error(
+      'This account is not registered as a field rep (MIE). Please contact your administrator.',
+    );
+  }
+
+  const user: AuthUser = {
+    userId: u.userId,
+    username: u.username,
+    name: u.displayName || u.username,
+    email: u.email ?? undefined,
+    role: 'rep',
+    team: u.teamName ?? undefined,
+    mieId: String(u.mieId),
+    teamId: Number(u.teamId),
+  };
 
   return {
-    ...matchingAccount,
-    role: user.role ?? matchingAccount.role,
-    name: user.name || matchingAccount.name,
-    team: user.team ?? matchingAccount.team,
-    sapId: user.sapId ?? matchingAccount.sapId,
-    mieId: user.mieId ?? matchingAccount.mieId,
-    teamId: user.teamId ?? matchingAccount.teamId,
+    token: `session-${user.userId}-${Date.now()}`,
+    user,
   };
+}
+
+interface OfflineUsersResponse {
+  success: boolean;
+  count: number;
+  users: OfflineUserRecord[];
+}
+
+/**
+ * Pull the ACTIVE user login mirror and cache it on-device so ANY active user
+ * can sign in offline — even before anyone has signed in on this device. Uses
+ * the shared app key (no user credentials needed) so it can run on app open.
+ * Best-effort: when offline or on error it silently keeps the existing mirror.
+ */
+export async function bootstrapOfflineUsers(): Promise<void> {
+  if (!OFFLINE_SYNC_KEY) return;
+  try {
+    const payload = (await axios.post(
+      '/auth/offline-users',
+      {},
+      { headers: { 'x-app-key': OFFLINE_SYNC_KEY } },
+    )) as unknown as OfflineUsersResponse;
+    if (payload?.success && Array.isArray(payload.users)) {
+      await saveOfflineUsers(payload.users);
+    }
+  } catch (error) {
+    console.warn('[Auth] Failed to sync offline users mirror', error);
+  }
+}
+
+/** Build a rep session from a mirrored user record (throws if not a field rep). */
+function offlineRecordToSession(rec: OfflineUserRecord): PersistedSession {
+  if (rec.mieId == null || rec.teamId == null) {
+    throw new Error(
+      'This account is not registered as a field rep (MIE). Please contact your administrator.',
+    );
+  }
+  const user: AuthUser = {
+    userId: rec.userId,
+    username: rec.username,
+    name: rec.displayName || rec.username,
+    email: rec.email ?? undefined,
+    role: 'rep',
+    team: rec.teamName ?? undefined,
+    mieId: String(rec.mieId),
+    teamId: Number(rec.teamId),
+  };
+  return { token: `offline-${user.userId}-${Date.now()}`, user };
 }
 
 export async function readStoredSession(): Promise<PersistedSession | null> {
@@ -157,31 +241,6 @@ async function writeStoredSession(session: PersistedSession | null): Promise<voi
   }
 }
 
-async function dummyLogin(
-  username: string,
-  password: string,
-): Promise<PersistedSession> {
-  await new Promise((resolve) => setTimeout(resolve, 500));
-
-  const normalizedUsername = username.trim().toLowerCase();
-  const account = DUMMY_ACCOUNTS.find(
-    (candidate) =>
-      candidate.username.toLowerCase() === normalizedUsername &&
-      candidate.password === password,
-  );
-
-  if (!account) {
-    throw new Error('Invalid username or password');
-  }
-
-  const { password: _password, ...user } = account;
-
-  return {
-    token: `dummy-token-${user.role}-${Date.now()}`,
-    user,
-  };
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -197,20 +256,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const normalizedUser = enrichUserFromDummyAccounts(storedSession?.user ?? null);
       setToken(storedSession?.token ?? null);
-      setUser(normalizedUser);
+      setUser(storedSession?.user ?? null);
       setIsHydrated(true);
-
-      if (storedSession?.token && normalizedUser) {
-        void writeStoredSession({
-          token: storedSession.token,
-          user: normalizedUser,
-        });
-      }
     };
 
     void hydrate();
+    // On app open, pull the login mirror + all reps' planned lists so a user who
+    // has never signed in on this device can still log in AND see their planned
+    // calls offline. Best-effort: no-ops when offline (keeps last cached copy).
+    void bootstrapOfflineUsers();
+    void bootstrapPlannedBulk();
 
     return () => {
       isMounted = false;
@@ -218,24 +274,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (username: string, password: string) => {
-    const nextSession = await dummyLogin(username, password);
-    setToken(nextSession.token);
-    setUser(nextSession.user);
-    await writeStoredSession(nextSession);
+    try {
+      const nextSession = await apiLogin(username, password);
+      setToken(nextSession.token);
+      setUser(nextSession.user);
+      await writeStoredSession(nextSession);
+      // Cache a verifiable credential so this user can log in offline later.
+      await saveOfflineCredential(
+        username,
+        password,
+        nextSession.token,
+        nextSession.user,
+      );
+      // Refresh the login mirror + planned bulk after a successful online login
+      // (best-effort; doesn't block the login).
+      void bootstrapOfflineUsers();
+      void bootstrapPlannedBulk();
+    } catch (error: any) {
+      // Only fall back to offline login when the server was unreachable — a real
+      // 401/403 must still surface as an invalid-credentials error.
+      if (error?.isNetworkError) {
+        // 1) Any active user via the on-device login mirror.
+        const mirrorRecord = await verifyOfflineUser(username, password);
+        if (mirrorRecord) {
+          const session = offlineRecordToSession(mirrorRecord);
+          setToken(session.token);
+          setUser(session.user);
+          await writeStoredSession(session);
+          return;
+        }
+        // 2) Fallback: this device's last online user (salted-hash cache).
+        const offlineSession = await verifyOfflineCredential(username, password);
+        if (offlineSession) {
+          setToken(offlineSession.token);
+          setUser(offlineSession.user);
+          await writeStoredSession(offlineSession);
+          return;
+        }
+        throw new Error(
+          'You appear to be offline and no saved login was found on this device. Connect to the internet to sign in the first time.',
+        );
+      }
+      throw error;
+    }
   };
 
   const logout = async () => {
+    // Logout only drops the session — it intentionally KEEPS all offline data:
+    // the React Query cache (doctors / forcing / SKUs / unplanned pool), the
+    // downloaded slide images, planned bulk, sync metadata, login mirror, and
+    // the call outbox. This way the rep gets their full dataset back on the next
+    // login — even offline, and even after the app was killed. Queries are keyed
+    // per rep (mieId/teamId), so a different rep signing in here won't see this
+    // rep's cached data (they fetch/sync their own). When online, screens
+    // refetch the latest.
     setToken(null);
     setUser(null);
     await writeStoredSession(null);
-    // Wipe cached data + downloaded images so the next user starts clean.
-    try {
-      queryClient.clear();
-      await clearImageCache();
-      await clearSyncMeta();
-    } catch (error) {
-      console.warn('[Auth] Failed to clear offline caches on logout', error);
-    }
   };
 
   const value = useMemo<AuthContextValue>(

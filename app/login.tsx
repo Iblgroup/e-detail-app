@@ -1,6 +1,7 @@
 import { Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import NetInfo from '@react-native-community/netinfo';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -14,12 +15,8 @@ import {
   View,
 } from 'react-native';
 import { Colors } from '@/constants/theme';
-import { useAuth } from '@/providers/AuthProvider';
-
-const demoAccounts = [
-  { label: 'Medical Rep - Titans Extor', credentials: 'abdullah / abdullah123' },
-  { label: 'Medical Rep - Vibrant', credentials: 'abdulghaffar / abdulghaffar123' },
-];
+import { useAuth, bootstrapOfflineUsers } from '@/providers/AuthProvider';
+import { getOfflineUsersCount } from '@/lib/offline/offlineUsers';
 
 export default function LoginScreen() {
   const { isAuthenticated, isHydrated, login } = useAuth();
@@ -28,6 +25,42 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [offlineCount, setOfflineCount] = useState<number | null>(null);
+  const [isOnline, setIsOnline] = useState(true);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const refreshOfflineCount = useCallback(async () => {
+    try {
+      setOfflineCount(await getOfflineUsersCount());
+    } catch {
+      setOfflineCount(0);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshOfflineCount();
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsOnline(Boolean(state.isConnected));
+    });
+    return unsubscribe;
+  }, [refreshOfflineCount]);
+
+  const handleDownloadOfflineLogins = useCallback(async () => {
+    setIsDownloading(true);
+    setLoginError('');
+    try {
+      await bootstrapOfflineUsers();
+      const count = await getOfflineUsersCount();
+      setOfflineCount(count);
+      if (count === 0) {
+        setLoginError(
+          'Could not download the offline logins. Check that the server is reachable and try again.',
+        );
+      }
+    } finally {
+      setIsDownloading(false);
+    }
+  }, []);
 
   if (!isHydrated) {
     return (
@@ -153,22 +186,42 @@ export default function LoginScreen() {
               )}
             </Pressable>
 
-            <View style={styles.helperCard}>
-              <Text style={styles.helperTitle}>Current login source</Text>
-              <Text style={styles.helperBody}>
-                This mobile app now allows one Medical Rep login for each team until backend auth is added.
+            {/* Offline-login readiness: shows whether the login list is cached on
+                this device, with a manual download when online. */}
+            <View style={styles.offlineStatusRow}>
+              <Ionicons
+                name={offlineCount ? 'cloud-done-outline' : 'cloud-offline-outline'}
+                size={16}
+                color={offlineCount ? Colors.primary : Colors.textMuted}
+              />
+              <Text style={styles.offlineStatusText}>
+                {offlineCount == null
+                  ? 'Checking offline logins…'
+                  : offlineCount > 0
+                    ? `${offlineCount} accounts available offline`
+                    : isOnline
+                      ? 'No offline logins yet — download to enable offline sign-in'
+                      : 'No offline logins cached — connect once to enable offline sign-in'}
               </Text>
             </View>
 
-            <View style={styles.credentialsCard}>
-              <Text style={styles.credentialsTitle}>Medical Rep credentials</Text>
-              {demoAccounts.map((account) => (
-                <View key={account.label} style={styles.credentialsRow}>
-                  <Text style={styles.credentialsLabel}>{account.label}</Text>
-                  <Text style={styles.credentialsValue}>{account.credentials}</Text>
-                </View>
-              ))}
-            </View>
+            {isOnline ? (
+              <Pressable
+                onPress={() => {
+                  void handleDownloadOfflineLogins();
+                }}
+                disabled={isDownloading}
+                style={styles.downloadLink}
+              >
+                {isDownloading ? (
+                  <ActivityIndicator color={Colors.primary} size="small" />
+                ) : (
+                  <Text style={styles.downloadLinkText}>
+                    {offlineCount ? 'Refresh offline logins' : 'Download offline logins'}
+                  </Text>
+                )}
+              </Pressable>
+            ) : null}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -329,50 +382,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
   },
-  helperCard: {
-    borderRadius: 16,
-    backgroundColor: '#F1F6FC',
-    borderWidth: 1,
-    borderColor: '#DDE8F5',
-    padding: 14,
-    gap: 6,
+  offlineStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: -4,
   },
-  helperTitle: {
-    color: Colors.secondary,
-    fontSize: 13,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  helperBody: {
-    color: Colors.text,
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  credentialsCard: {
-    borderRadius: 18,
-    backgroundColor: '#FBFCFE',
-    borderWidth: 1,
-    borderColor: '#E5ECF5',
-    padding: 16,
-    gap: 10,
-  },
-  credentialsTitle: {
-    color: Colors.text,
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  credentialsRow: {
-    gap: 3,
-  },
-  credentialsLabel: {
+  offlineStatusText: {
+    flex: 1,
     color: Colors.textMuted,
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 12.5,
+    lineHeight: 17,
+    fontWeight: '600',
   },
-  credentialsValue: {
-    color: Colors.secondary,
-    fontSize: 14,
+  downloadLink: {
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  downloadLinkText: {
+    color: Colors.primary,
+    fontSize: 13,
     fontWeight: '800',
   },
 });

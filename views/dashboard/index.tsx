@@ -60,8 +60,8 @@ export default function Dashboard() {
   const teamQuery = useGetFieldForceHierarchy();
   const { user } = useAuth();
   const hierarchyRows = teamQuery.data?.data ?? [];
-  const repProfile = user?.sapId
-    ? hierarchyRows.find((row) => String(row.MIE_SAP_ID ?? '') === user.sapId)
+  const repProfile = user?.mieId
+    ? hierarchyRows.find((row) => String(row.MIE_ID ?? '') === user.mieId)
     : undefined;
 
   useEffect(() => {
@@ -84,7 +84,7 @@ export default function Dashboard() {
 
   const profileName = asText(repProfile?.MIE_NAME, user?.name ?? 'Medical Rep');
   const profileTeam = asText(repProfile?.TEAMNAME, user?.team ?? 'Unknown team');
-  const profileSap = asText(repProfile?.MIE_SAP_ID, user?.sapId ?? 'Unknown SAP');
+  const profileSap = asText(repProfile?.MIE_SAP_ID, user?.mieId ?? 'Unknown MIE');
   const profileManager = asText(repProfile?.RM, 'Not available');
   const profileBase = asText(repProfile?.MIE_BASE, 'Not available');
   const profileSm = asText(repProfile?.SM, 'Not available');

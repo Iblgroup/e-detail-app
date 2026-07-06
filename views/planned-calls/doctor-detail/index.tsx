@@ -1,6 +1,6 @@
 import { Colors } from '@/constants/theme';
+import { useArrival } from '@/lib/location/useArrival';
 import { router } from 'expo-router';
-import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { CallType } from '../callTypes';
 // import { AddTokenButton } from './AddTokenButton'; // hidden for now
@@ -40,7 +40,7 @@ export default function DoctorDetail({
   completed = false,
   callType = 'planned',
 }: DoctorDetailProps) {
-  const [arrived, setArrived] = useState(false);
+  const { arrived, arrival, toggleArrived, reset } = useArrival();
   // const [tokenAdded, setTokenAdded] = useState(false); // Add Card (Token) hidden
   const plannedCallsSource = doctor.plannedCalls ?? [
     {
@@ -82,7 +82,7 @@ export default function DoctorDetail({
           <View style={styles.buttonsRow}>
             {/* Add Card (Token) hidden for now */}
             <View style={styles.buttonCellFull}>
-              <ArrivedButton arrived={arrived} onPress={() => setArrived((v) => !v)} />
+              <ArrivedButton arrived={arrived} onPress={toggleArrived} />
             </View>
             <View style={styles.buttonCellHalf}>
               <StartCallButton
@@ -96,13 +96,17 @@ export default function DoctorDetail({
                       doctorName: doctor.name,
                       specialtyId: doctor.specialtyId ? String(doctor.specialtyId) : undefined,
                       teamId: doctor.teamId ? String(doctor.teamId) : undefined,
+                      latitude: arrival?.latitude != null ? String(arrival.latitude) : undefined,
+                      longitude: arrival?.longitude != null ? String(arrival.longitude) : undefined,
+                      arrivedTime: arrival?.arrivedTime,
+                      arrivedLocation: arrival?.arrivedLocation,
                     },
                   })
                 }
               />
             </View>
             <View style={styles.buttonCellHalf}>
-              <CancelCallButton enabled={arrived} onPress={() => setArrived(false)} />
+              <CancelCallButton enabled={arrived} onPress={reset} />
             </View>
           </View>
         )}

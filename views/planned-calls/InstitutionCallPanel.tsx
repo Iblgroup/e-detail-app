@@ -1,5 +1,6 @@
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/providers/AuthProvider';
+import { useArrival } from '@/lib/location/useArrival';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -25,7 +26,7 @@ const CALL_TYPES: CallTypeOption[] = [
 export function InstitutionCallPanel() {
   const { user } = useAuth();
   const [callType, setCallType] = useState<InstitutionCallType>('walking');
-  const [arrived, setArrived] = useState(false);
+  const { arrived, arrival, toggleArrived, reset } = useArrival();
 
   const selected = CALL_TYPES.find((option) => option.key === callType);
 
@@ -38,6 +39,10 @@ export function InstitutionCallPanel() {
         doctorName: `${selected?.label ?? 'Institution Call'}`,
         teamId: user?.teamId ? String(user.teamId) : undefined,
         institution: callType,
+        latitude: arrival?.latitude != null ? String(arrival.latitude) : undefined,
+        longitude: arrival?.longitude != null ? String(arrival.longitude) : undefined,
+        arrivedTime: arrival?.arrivedTime,
+        arrivedLocation: arrival?.arrivedLocation,
       },
     });
   };
@@ -92,13 +97,13 @@ export function InstitutionCallPanel() {
 
       <View style={styles.buttonsRow}>
         <View style={styles.buttonCellFull}>
-          <ArrivedButton arrived={arrived} onPress={() => setArrived((value) => !value)} />
+          <ArrivedButton arrived={arrived} onPress={toggleArrived} />
         </View>
         <View style={styles.buttonCellHalf}>
           <StartCallButton enabled={arrived} onPress={handleStartCall} />
         </View>
         <View style={styles.buttonCellHalf}>
-          <CancelCallButton enabled={arrived} onPress={() => setArrived(false)} />
+          <CancelCallButton enabled={arrived} onPress={reset} />
         </View>
       </View>
     </View>
