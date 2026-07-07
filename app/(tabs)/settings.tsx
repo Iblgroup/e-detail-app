@@ -12,6 +12,10 @@ import { Platform, Pressable, StyleSheet, Switch, Text, TextInput, useWindowDime
 // list it — cast to keep the account card pinned while the page scrolls (web).
 const STICKY_SIDE_COLUMN = { position: 'sticky', top: 16 } as unknown as ViewStyle;
 
+// Security Settings (2FA / Biometric / Session Timeout) are placeholder toggles
+// that don't do anything yet — hidden for now. Flip to true when they're wired.
+const SHOW_SECURITY_SETTINGS = false;
+
 function formatSyncedAt(iso: string | null): string {
   if (!iso) return 'Never';
   const date = new Date(iso);
@@ -48,20 +52,38 @@ interface PasswordFieldProps {
   label: string;
   placeholder: string;
   icon: keyof typeof Ionicons.glyphMap;
+  value: string;
+  onChangeText: (text: string) => void;
 }
 
-function PasswordField({ label, placeholder, icon }: PasswordFieldProps) {
+function PasswordField({ label, placeholder, icon, value, onChangeText }: PasswordFieldProps) {
+  const [show, setShow] = useState(false);
   return (
     <View style={styles.fieldGroup}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <View style={styles.inputWrap}>
         <Ionicons name={icon} size={18} color="#9AA7B8" />
         <TextInput
-          secureTextEntry
+          secureTextEntry={!show}
+          autoCapitalize="none"
+          autoCorrect={false}
           placeholder={placeholder}
           placeholderTextColor="#7B8493"
           style={styles.input}
+          value={value}
+          onChangeText={onChangeText}
         />
+        <Pressable
+          onPress={() => setShow((current) => !current)}
+          hitSlop={10}
+          accessibilityLabel={show ? 'Hide password' : 'Show password'}
+        >
+          <Ionicons
+            name={show ? 'eye-off-outline' : 'eye-outline'}
+            size={20}
+            color="#7B8493"
+          />
+        </Pressable>
       </View>
     </View>
   );
@@ -99,12 +121,45 @@ const CALL_MODE_OPTIONS: {
 export default function SettingsScreen() {
   const { width } = useWindowDimensions();
   const isWide = width >= 760;
-  const { user, logout } = useAuth();
+  const { user, logout, changePassword } = useAuth();
   const { lastSyncedAt, isOnline, status, syncNow } = useSync();
   const { callMode, setCallMode } = useCallMode();
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(true);
   const [sessionTimeoutEnabled, setSessionTimeoutEnabled] = useState(true);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [pwSubmitting, setPwSubmitting] = useState(false);
+  const [pwMessage, setPwMessage] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
+
+  const handleUpdatePassword = async () => {
+    setPwMessage(null);
+    if (newPassword.length < 6) {
+      setPwMessage({ type: 'error', text: 'Password must be at least 6 characters.' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPwMessage({ type: 'error', text: 'Passwords do not match.' });
+      return;
+    }
+    setPwSubmitting(true);
+    try {
+      await changePassword(newPassword);
+      setNewPassword('');
+      setConfirmPassword('');
+      setPwMessage({ type: 'success', text: 'Password updated successfully.' });
+    } catch (error) {
+      setPwMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Failed to change password.',
+      });
+    } finally {
+      setPwSubmitting(false);
+    }
+  };
 
   return (
     <ScreenLayout
@@ -164,15 +219,31 @@ export default function SettingsScreen() {
               label="New Password"
               placeholder="Minimum 6 characters"
               icon="lock-closed-outline"
+              value={newPassword}
+              onChangeText={setNewPassword}
             />
             <PasswordField
               label="Confirm Password"
               placeholder="Repeat new password"
               icon="checkmark-circle-outline"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
             />
+            {pwMessage ? (
+              <Text
+                style={[
+                  styles.pwMessage,
+                  pwMessage.type === 'error' ? styles.pwError : styles.pwSuccess,
+                ]}
+              >
+                {pwMessage.text}
+              </Text>
+            ) : null}
             <AppButton
-              label="Update Password"
-              onPress={() => {}}
+              label={pwSubmitting ? 'Updating…' : 'Update Password'}
+              onPress={() => {
+                void handleUpdatePassword();
+              }}
               icon={<Ionicons name="arrow-forward" size={18} color={Colors.textOnDark} />}
               style={styles.updateButton}
             />
@@ -237,23 +308,25 @@ export default function SettingsScreen() {
             />
           </SettingsCard>
 
-          <SettingsCard icon="shield-checkmark-outline" title="Security Settings">
-            <SecurityRow
-              label="Two-Factor Authentication"
-              value={twoFactorEnabled}
-              onValueChange={setTwoFactorEnabled}
-            />
-            <SecurityRow
-              label="Biometric Login"
-              value={biometricEnabled}
-              onValueChange={setBiometricEnabled}
-            />
-            <SecurityRow
-              label="Session Timeout (15 mins)"
-              value={sessionTimeoutEnabled}
-              onValueChange={setSessionTimeoutEnabled}
-            />
-          </SettingsCard>
+          {SHOW_SECURITY_SETTINGS ? (
+            <SettingsCard icon="shield-checkmark-outline" title="Security Settings">
+              <SecurityRow
+                label="Two-Factor Authentication"
+                value={twoFactorEnabled}
+                onValueChange={setTwoFactorEnabled}
+              />
+              <SecurityRow
+                label="Biometric Login"
+                value={biometricEnabled}
+                onValueChange={setBiometricEnabled}
+              />
+              <SecurityRow
+                label="Session Timeout (15 mins)"
+                value={sessionTimeoutEnabled}
+                onValueChange={setSessionTimeoutEnabled}
+              />
+            </SettingsCard>
+          ) : null}
         </View>
       </View>
     </ScreenLayout>
@@ -341,6 +414,16 @@ const styles = StyleSheet.create({
     minHeight: 40,
     paddingHorizontal: 18,
     marginTop: 4,
+  },
+  pwMessage: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  pwError: {
+    color: Colors.danger,
+  },
+  pwSuccess: {
+    color: '#059669',
   },
   callModeHint: {
     color: Colors.textMuted,

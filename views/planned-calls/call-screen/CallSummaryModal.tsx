@@ -6,7 +6,10 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWin
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export interface CallSummaryData {
+  // The selected quick-feedback chips (joined).
   feedback: string;
+  // The free-text "Additional Comment" input.
+  feedbackComment: string;
   jointCall: string;
   samplesProvided: string;
   doctorInterest: 'High' | 'Medium' | 'Low';
@@ -80,13 +83,6 @@ export function CallSummaryModal({
     () => Math.min(Math.max(slidesViewed, 0), totalSlides),
     [slidesViewed, totalSlides]
   );
-
-  const feedbackSummary = useMemo(() => {
-    const parts = [...selectedFeedback];
-    const custom = customFeedback.trim();
-    if (custom) parts.push(custom);
-    return parts.join(', ');
-  }, [selectedFeedback, customFeedback]);
 
   const toggleFeedback = (option: string) => {
     setSelectedFeedback((current) =>
@@ -290,7 +286,9 @@ export function CallSummaryModal({
               onPress={() => {
                 if (!canSubmit) return;
                 onSubmit({
-                  feedback: feedbackSummary,
+                  // Quick-feedback chips only; the free-text goes separately.
+                  feedback: selectedFeedback.join(', '),
+                  feedbackComment: customFeedback.trim(),
                   jointCall: jointCall.join(', '),
                   samplesProvided,
                   doctorInterest,

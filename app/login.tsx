@@ -1,7 +1,6 @@
 import { Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useEffect, useState } from 'react';
-import NetInfo from '@react-native-community/netinfo';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -15,52 +14,19 @@ import {
   View,
 } from 'react-native';
 import { Colors } from '@/constants/theme';
-import { useAuth, bootstrapOfflineUsers } from '@/providers/AuthProvider';
-import { getOfflineUsersCount } from '@/lib/offline/offlineUsers';
+import { useAuth } from '@/providers/AuthProvider';
 
 export default function LoginScreen() {
-  const { isAuthenticated, isHydrated, login } = useAuth();
+  const { isAuthenticated, isHydrated, login, isSyncingOfflineUsers } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loginError, setLoginError] = useState('');
-  const [offlineCount, setOfflineCount] = useState<number | null>(null);
-  const [isOnline, setIsOnline] = useState(true);
-  const [isDownloading, setIsDownloading] = useState(false);
 
-  const refreshOfflineCount = useCallback(async () => {
-    try {
-      setOfflineCount(await getOfflineUsersCount());
-    } catch {
-      setOfflineCount(0);
-    }
-  }, []);
-
-  useEffect(() => {
-    void refreshOfflineCount();
-    const unsubscribe = NetInfo.addEventListener((state) => {
-      setIsOnline(Boolean(state.isConnected));
-    });
-    return unsubscribe;
-  }, [refreshOfflineCount]);
-
-  const handleDownloadOfflineLogins = useCallback(async () => {
-    setIsDownloading(true);
-    setLoginError('');
-    try {
-      await bootstrapOfflineUsers();
-      const count = await getOfflineUsersCount();
-      setOfflineCount(count);
-      if (count === 0) {
-        setLoginError(
-          'Could not download the offline logins. Check that the server is reachable and try again.',
-        );
-      }
-    } finally {
-      setIsDownloading(false);
-    }
-  }, []);
+  // Sign In is disabled while the on-open offline login sync runs (or while
+  // submitting), so the offline account list is ready before the first sign-in.
+  const signInDisabled = isSubmitting || isSyncingOfflineUsers;
 
   if (!isHydrated) {
     return (
@@ -171,12 +137,12 @@ export default function LoginScreen() {
               }}
               style={({ pressed }) => [
                 styles.submitButton,
-                pressed && !isSubmitting ? styles.submitButtonPressed : null,
-                isSubmitting ? styles.submitButtonDisabled : null,
+                pressed && !signInDisabled ? styles.submitButtonPressed : null,
+                signInDisabled ? styles.submitButtonDisabled : null,
               ]}
-              disabled={isSubmitting}
+              disabled={signInDisabled}
             >
-              {isSubmitting ? (
+              {signInDisabled ? (
                 <ActivityIndicator color={Colors.textOnDark} />
               ) : (
                 <>
@@ -185,43 +151,6 @@ export default function LoginScreen() {
                 </>
               )}
             </Pressable>
-
-            {/* Offline-login readiness: shows whether the login list is cached on
-                this device, with a manual download when online. */}
-            <View style={styles.offlineStatusRow}>
-              <Ionicons
-                name={offlineCount ? 'cloud-done-outline' : 'cloud-offline-outline'}
-                size={16}
-                color={offlineCount ? Colors.primary : Colors.textMuted}
-              />
-              <Text style={styles.offlineStatusText}>
-                {offlineCount == null
-                  ? 'Checking offline logins…'
-                  : offlineCount > 0
-                    ? `${offlineCount} accounts available offline`
-                    : isOnline
-                      ? 'No offline logins yet — download to enable offline sign-in'
-                      : 'No offline logins cached — connect once to enable offline sign-in'}
-              </Text>
-            </View>
-
-            {isOnline ? (
-              <Pressable
-                onPress={() => {
-                  void handleDownloadOfflineLogins();
-                }}
-                disabled={isDownloading}
-                style={styles.downloadLink}
-              >
-                {isDownloading ? (
-                  <ActivityIndicator color={Colors.primary} size="small" />
-                ) : (
-                  <Text style={styles.downloadLinkText}>
-                    {offlineCount ? 'Refresh offline logins' : 'Download offline logins'}
-                  </Text>
-                )}
-              </Pressable>
-            ) : null}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -380,28 +309,6 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: Colors.textOnDark,
     fontSize: 16,
-    fontWeight: '800',
-  },
-  offlineStatusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: -4,
-  },
-  offlineStatusText: {
-    flex: 1,
-    color: Colors.textMuted,
-    fontSize: 12.5,
-    lineHeight: 17,
-    fontWeight: '600',
-  },
-  downloadLink: {
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-  downloadLinkText: {
-    color: Colors.primary,
-    fontSize: 13,
     fontWeight: '800',
   },
 });

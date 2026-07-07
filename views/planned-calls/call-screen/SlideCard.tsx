@@ -6,6 +6,10 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 export interface Slide {
   id: string;
   brand: string;
+  // The actual brand + SKU names for this slide (for call recording); the
+  // display uses `brand`/`title`/`subtitle` above.
+  brandName?: string;
+  skuName?: string;
   title: string;
   subtitle: string;
   bullets: string[];

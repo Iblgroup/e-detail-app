@@ -68,6 +68,8 @@ function mapForcingSlides(slides: DoctorCallSlide[]): Slide[] {
   return slides.map((slide) => ({
     id: slide.id,
     brand: slide.brand,
+    brandName: slide.brandName,
+    skuName: slide.skuName,
     title: slide.title,
     subtitle: slide.subtitle,
     bullets: slide.bullets,
@@ -99,8 +101,9 @@ export default function CallScreen({
 }: CallScreenProps) {
   const { user } = useAuth();
   const isInstitutionCall = Boolean(institutionType);
-  const hasForcingContext = Boolean(teamId && specialtyId);
-  const forcingSlidesQuery = useForcingSlides({ teamId, doctorSpecId: specialtyId });
+  // Forcing is resolved by the doctor (their specialties), not a specialty id.
+  const hasForcingContext = Boolean(teamId && doctorId);
+  const forcingSlidesQuery = useForcingSlides({ teamId, doctorId });
   // The team's SKUs, for the "Samples Provided" picker.
   const sampleOptions = useTeamSkus(teamId).data ?? [];
   // The team's (cached) doctor pool. Institution calls require picking a doctor
@@ -205,6 +208,31 @@ export default function CallScreen({
         },
       );
 
+      // Brands + SKUs shown in this call, linked: each SKU carries the id of its
+      // brand. "Shown" = slides actually viewed (time > 0); fall back to the deck.
+      const shownSlides = slides.filter((_, i) => (slideTimes[i] ?? 0) > 0);
+      const effectiveShown = shownSlides.length > 0 ? shownSlides : slides;
+
+      const brandIdByName = new Map<string, number>();
+      const brandObjects: { id: number; name: string }[] = [];
+      for (const slide of effectiveShown) {
+        const name = (slide.brandName || '').trim();
+        if (!name || brandIdByName.has(name)) continue;
+        const id = brandObjects.length + 1;
+        brandIdByName.set(name, id);
+        brandObjects.push({ id, name });
+      }
+
+      const seenSku = new Set<string>();
+      const skuObjects: { brand_id: number | null; name: string }[] = [];
+      for (const slide of effectiveShown) {
+        const skuName = (slide.skuName || '').trim();
+        if (!skuName || seenSku.has(skuName)) continue;
+        seenSku.add(skuName);
+        const brandName = (slide.brandName || '').trim();
+        skuObjects.push({ brand_id: brandIdByName.get(brandName) ?? null, name: skuName });
+      }
+
       const payload: CallTrackingInput = {
         tsoid,
         doctorid: resolvedDoctorId,
@@ -229,13 +257,16 @@ export default function CallScreen({
         shown_slides_count: slidesViewed,
         slides_total_time_seconds: slidesTotalSeconds,
         each_slide_time: eachSlideTime,
-        brand: slides[0]?.brand || undefined,
+        // brand + sku as linked objects (jsonb columns).
+        brand: brandObjects.length ? brandObjects : undefined,
+        sku: skuObjects.length ? skuObjects : undefined,
         join_call: jointCall,
         sample_provided: sampleProvided,
         samples_json: sampleProvided
           ? { samples: [summary.samplesProvided] }
           : { samples: [] },
         feedback: summary.feedback || undefined,
+        feedback_comment: summary.feedbackComment || undefined,
         call_type: callType,
         institution_call_type: institutionType || undefined,
         created_by: Number(user?.userId) || undefined,
@@ -274,13 +305,18 @@ export default function CallScreen({
       // Institution/walking calls carry the doctor chosen in the summary.
       const effectiveDoctorName = summary.selectedDoctor?.trim() || doctorName;
 
+      // Combined feedback for the in-app analytics display (chips + comment).
+      const displayFeedback =
+        [summary.feedback, summary.feedbackComment].filter(Boolean).join(' — ') ||
+        'No feedback provided';
+
       hasEndedRef.current = true;
       markCallCompleted(doctorId, callType, {
         doctorName: effectiveDoctorName,
         durationSeconds: elapsedSeconds,
         slidesViewed,
         totalSlides: slides.length,
-        feedback: summary.feedback || 'No feedback provided',
+        feedback: displayFeedback,
         doctorInterest: summary.doctorInterest,
         slideTimes,
         slideLabels: slides.map(getAnalyticsSlideLabel),
@@ -305,7 +341,7 @@ export default function CallScreen({
           duration: String(elapsedSeconds),
           slidesViewed: String(slidesViewed),
           totalSlides: String(slides.length),
-          feedback: summary.feedback || 'No feedback provided',
+          feedback: displayFeedback,
           doctorInterest: summary.doctorInterest,
           jointCall: summary.jointCall,
           samplesProvided: summary.samplesProvided,

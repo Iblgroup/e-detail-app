@@ -60,6 +60,9 @@ interface AuthContextValue {
   canEdit: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  changePassword: (newPassword: string) => Promise<void>;
+  /** True while the on-open offline login mirror download is in progress. */
+  isSyncingOfflineUsers: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -245,6 +248,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
+  // Starts true so the login screen's Sign In stays disabled until the on-open
+  // offline mirror download finishes (or fails fast when offline).
+  const [isSyncingOfflineUsers, setIsSyncingOfflineUsers] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -265,7 +271,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // On app open, pull the login mirror + all reps' planned lists so a user who
     // has never signed in on this device can still log in AND see their planned
     // calls offline. Best-effort: no-ops when offline (keeps last cached copy).
-    void bootstrapOfflineUsers();
+    // The login screen keeps Sign In disabled while the mirror download runs.
+    void (async () => {
+      try {
+        await bootstrapOfflineUsers();
+      } finally {
+        if (isMounted) setIsSyncingOfflineUsers(false);
+      }
+    })();
     void bootstrapPlannedBulk();
 
     return () => {
@@ -333,6 +346,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await writeStoredSession(null);
   };
 
+  // Change the signed-in user's password. Updates the server, then refreshes the
+  // on-device offline credential so offline login works with the new password.
+  const changePassword = async (newPassword: string) => {
+    if (!user) throw new Error('You are not signed in.');
+    try {
+      await axios.post('/auth/change-password', {
+        userId: user.userId,
+        username: user.username,
+        newPassword,
+      });
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to change password. Please try again.';
+      throw new Error(message);
+    }
+    await saveOfflineCredential(
+      user.username,
+      newPassword,
+      token ?? `session-${user.userId}`,
+      user,
+    );
+  };
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -343,8 +381,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       canEdit: false,
       login,
       logout,
+      changePassword,
+      isSyncingOfflineUsers,
     }),
-    [isHydrated, token, user],
+    [isHydrated, token, user, isSyncingOfflineUsers],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

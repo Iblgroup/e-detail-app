@@ -75,22 +75,19 @@ export async function runSync({
   // Seed the team's SKUs for the call summary "Samples Provided" picker.
   queryClient.setQueryData(teamSkusKey(teamId), payload.teamSkus ?? []);
 
-  // 2) Seed each specialty's forcing query + collect the image URLs (as the
-  //    slides will request them, so the cached file keys match).
+  // 2) Seed each doctor's forcing query + collect the image URLs (as the slides
+  //    will request them, so the cached file keys match). Forcing is keyed by
+  //    doctorId (matched server-side against the doctor's specialties).
   const imageUrls: string[] = [];
-  for (const [specId, rows] of Object.entries(payload.forcing)) {
+  for (const [doctorId, rows] of Object.entries(payload.forcing)) {
     const response: ForcingContentResponse = {
       success: true,
       count: rows.length,
       teamId,
-      doctorSpecId: Number(specId),
-      forcingSpecIds: [],
+      doctorId,
       data: rows,
     };
-    queryClient.setQueryData(
-      forcingContentKey(teamId, Number(specId)),
-      response,
-    );
+    queryClient.setQueryData(forcingContentKey(teamId, doctorId), response);
     imageUrls.push(...forcingImageUrls(response));
   }
 

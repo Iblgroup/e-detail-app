@@ -7,10 +7,11 @@ import { resolveCachedImage } from '@/lib/offline/imageCache';
 export interface ForcingContentRow {
   team_id: number;
   team_name: string;
-  spec_id: number;
-  specility_name: string;
-  sku_name: string;
-  brand_name?: string;
+  specialty_id: number;
+  brand_id?: string | null;
+  brand_name?: string | null;
+  sku_id?: number | null;
+  sku_name?: string | null;
   url: string;
   status: string;
   forcing: number | null;
@@ -21,14 +22,13 @@ export interface ForcingContentResponse {
   success: boolean;
   count: number;
   teamId: number;
-  doctorSpecId: number;
-  forcingSpecIds: number[];
+  doctorId: string;
   data: ForcingContentRow[];
 }
 
 interface ForcingContentParams {
   teamId?: number;
-  doctorSpecId?: number;
+  doctorId?: string;
 }
 
 function parseDurationSeconds(duration: string | null | undefined) {
@@ -66,17 +66,17 @@ export function normalizeAssetUrl(url: string) {
 
 export const forcingContentKey = (
   teamId?: number,
-  doctorSpecId?: number,
-) => ['forcing-content', teamId ?? 'no-team', doctorSpecId ?? 'no-spec'] as const;
+  doctorId?: string,
+) => ['forcing-content', teamId ?? 'no-team', doctorId ?? 'no-doctor'] as const;
 
 export const getForcingContent = async ({
   teamId,
-  doctorSpecId,
+  doctorId,
 }: ForcingContentParams): Promise<ForcingContentResponse> => {
   return axios.get(ApiEndpoints.forcingContent, {
     params: {
       teamId,
-      doctorSpecId,
+      doctorId,
     },
   }) as unknown as Promise<ForcingContentResponse>;
 };
@@ -84,6 +84,10 @@ export const getForcingContent = async ({
 export interface DoctorCallSlide {
   id: string;
   brand: string;
+  // Actual brand + SKU names (for call recording); `brand`/`title`/`subtitle`
+  // are the display fields.
+  brandName?: string;
+  skuName?: string;
   title: string;
   subtitle: string;
   bullets: string[];
@@ -95,20 +99,26 @@ function numericPriority(value: number | null | undefined) {
   return Number.isFinite(Number(value)) ? Number(value) : Number.MAX_SAFE_INTEGER;
 }
 
+// Group key = SKU (sku-wise forcing) or brand (brand-wise forcing, no SKU).
+function forcingGroupKey(row: ForcingContentRow) {
+  return row.sku_name || row.brand_name || '';
+}
+
 function sortForcingRows(rows: ForcingContentRow[]) {
   const groupPriorityBySku = new Map<string, number>();
 
   rows.forEach((row) => {
+    const key = forcingGroupKey(row);
     const priority = numericPriority(row.forcing);
-    const current = groupPriorityBySku.get(row.sku_name);
+    const current = groupPriorityBySku.get(key);
     if (current == null || priority < current) {
-      groupPriorityBySku.set(row.sku_name, priority);
+      groupPriorityBySku.set(key, priority);
     }
   });
 
   return [...rows].sort((left, right) => {
-    const leftGroup = groupPriorityBySku.get(left.sku_name) ?? Number.MAX_SAFE_INTEGER;
-    const rightGroup = groupPriorityBySku.get(right.sku_name) ?? Number.MAX_SAFE_INTEGER;
+    const leftGroup = groupPriorityBySku.get(forcingGroupKey(left)) ?? Number.MAX_SAFE_INTEGER;
+    const rightGroup = groupPriorityBySku.get(forcingGroupKey(right)) ?? Number.MAX_SAFE_INTEGER;
     if (leftGroup !== rightGroup) {
       return leftGroup - rightGroup;
     }
@@ -125,19 +135,21 @@ function sortForcingRows(rows: ForcingContentRow[]) {
   });
 }
 
-export const useForcingSlides = ({ teamId, doctorSpecId }: ForcingContentParams) => {
+export const useForcingSlides = ({ teamId, doctorId }: ForcingContentParams) => {
   return useQuery({
-    queryKey: forcingContentKey(teamId, doctorSpecId),
-    queryFn: () => getForcingContent({ teamId, doctorSpecId }),
-    enabled: Boolean(teamId && doctorSpecId),
+    queryKey: forcingContentKey(teamId, doctorId),
+    queryFn: () => getForcingContent({ teamId, doctorId }),
+    enabled: Boolean(teamId && doctorId),
     staleTime: 5 * 60 * 1000,
     select: (response): DoctorCallSlide[] =>
       sortForcingRows(response.data)
         .map((row, index) => ({
-        id: `${row.sku_name}-${row.forcing ?? index}-${index}`,
+        id: `${row.sku_name || row.brand_name}-${row.forcing ?? index}-${index}`,
         brand: row.team_name || 'Searle Pharmaceuticals',
+        brandName: row.brand_name || undefined,
+        skuName: row.sku_name || undefined,
         title: row.brand_name || row.sku_name || 'Forcing Content',
-        subtitle: row.sku_name || row.specility_name || 'Doctor Call',
+        subtitle: row.sku_name || row.brand_name || 'Doctor Call',
         bullets: [],
         durationSeconds: parseDurationSeconds(row.duration),
         // Use the on-device copy when available so slides play offline.

@@ -25,8 +25,8 @@ export interface CallTrackingInput {
   shown_slides_count?: number;
   slides_total_time_seconds?: number;
   each_slide_time?: unknown; // jsonb — e.g. { [slideLabel]: seconds } or number[]
-  brand?: string;
-  sku?: string;
+  brand?: unknown; // jsonb — brands shown, e.g. [{ id, name }]
+  sku?: unknown; // jsonb — SKUs shown, each linked, e.g. [{ brand_id, name }]
   brand_slide_time?: unknown; // jsonb
   sku_slide_time?: unknown; // jsonb
   join_call?: unknown; // jsonb — e.g. string[]

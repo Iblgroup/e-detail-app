@@ -13,7 +13,7 @@ export interface DailySyncResponse {
   unplannedDoctors: DoctorDataRow[];
   // The team's SKUs, for the "Samples Provided" picker.
   teamSkus: string[];
-  // Forcing rows keyed by the doctor's specialty id.
+  // Forcing rows keyed by doctorId (matched server-side to the doctor's specialties).
   forcing: Record<string, ForcingContentRow[]>;
   imageUrls: string[];
 }
