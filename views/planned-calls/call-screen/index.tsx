@@ -101,9 +101,16 @@ export default function CallScreen({
 }: CallScreenProps) {
   const { user } = useAuth();
   const isInstitutionCall = Boolean(institutionType);
-  // Forcing is resolved by the doctor (their specialties), not a specialty id.
-  const hasForcingContext = Boolean(teamId && doctorId);
-  const forcingSlidesQuery = useForcingSlides({ teamId, doctorId });
+  // Forcing is resolved by the chosen specialty for institution calls, and by the
+  // doctor (their specialties) for doctor calls.
+  const forcingDoctorId = isInstitutionCall ? undefined : doctorId;
+  const forcingSpecialtyId = isInstitutionCall ? specialtyId : undefined;
+  const hasForcingContext = Boolean(teamId && (forcingDoctorId || forcingSpecialtyId));
+  const forcingSlidesQuery = useForcingSlides({
+    teamId,
+    doctorId: forcingDoctorId,
+    specialtyId: forcingSpecialtyId,
+  });
   // The team's SKUs, for the "Samples Provided" picker.
   const sampleOptions = useTeamSkus(teamId).data ?? [];
   // The team's (cached) doctor pool. Institution calls require picking a doctor
@@ -269,6 +276,9 @@ export default function CallScreen({
         feedback_comment: summary.feedbackComment || undefined,
         call_type: callType,
         institution_call_type: institutionType || undefined,
+        // Explicit completion marker — this payload is only built on End Call →
+        // submit, so the call is finished. Powers the Completed tab.
+        call_outcome: 'completed',
         created_by: Number(user?.userId) || undefined,
       };
 

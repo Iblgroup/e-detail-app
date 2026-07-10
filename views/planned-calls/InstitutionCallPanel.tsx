@@ -1,9 +1,11 @@
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/providers/AuthProvider';
 import { useArrival } from '@/lib/location/useArrival';
+import { useSpecialties } from '@/api/content';
+import { AppBottomSheetSelect } from '@/components/ui/AppBottomSheetSelect';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ArrivedButton } from './doctor-detail/ArrivedButton';
 import { CancelCallButton } from './doctor-detail/CancelCallButton';
@@ -28,7 +30,29 @@ export function InstitutionCallPanel() {
   const [callType, setCallType] = useState<InstitutionCallType>('walking');
   const { arrived, arrival, toggleArrived, reset } = useArrival();
 
+  // Forcing for an institution call is driven by the chosen specialty.
+  const specialtiesQuery = useSpecialties();
+  const specialties = useMemo(() => specialtiesQuery.data ?? [], [specialtiesQuery.data]);
+  const [selectedSpecialtyName, setSelectedSpecialtyName] = useState('');
+  const specialtyOptions = useMemo(
+    () => specialties.map((specialty) => specialty.specialty_name),
+    [specialties],
+  );
+  const selectedSpecialty = useMemo(
+    () => specialties.find((specialty) => specialty.specialty_name === selectedSpecialtyName),
+    [specialties, selectedSpecialtyName],
+  );
+  const hasSpecialty = Boolean(selectedSpecialty);
+
   const selected = CALL_TYPES.find((option) => option.key === callType);
+
+  // Changing the specialty invalidates the current arrival (a fresh vicinity
+  // check belongs to the newly chosen specialty), so reset the Arrived state.
+  const handleSpecialtyChange = (name: string) => {
+    if (name === selectedSpecialtyName) return;
+    setSelectedSpecialtyName(name);
+    reset();
+  };
 
   const handleStartCall = () => {
     router.push({
@@ -38,6 +62,7 @@ export function InstitutionCallPanel() {
         callType: 'planned',
         doctorName: `${selected?.label ?? 'Institution Call'}`,
         teamId: user?.teamId ? String(user.teamId) : undefined,
+        specialtyId: selectedSpecialty ? String(selectedSpecialty.specialty_id) : undefined,
         institution: callType,
         latitude: arrival?.latitude != null ? String(arrival.latitude) : undefined,
         longitude: arrival?.longitude != null ? String(arrival.longitude) : undefined,
@@ -95,12 +120,30 @@ export function InstitutionCallPanel() {
         </View>
       </View>
 
+      <View style={styles.card}>
+        <Text style={styles.cardLabel}>Specialty</Text>
+        <AppBottomSheetSelect
+          title="Select Specialty"
+          placeholder={
+            specialtiesQuery.isLoading ? 'Loading specialties...' : 'Select a specialty...'
+          }
+          options={specialtyOptions}
+          value={selectedSpecialtyName}
+          onChange={handleSpecialtyChange}
+          searchable={specialtyOptions.length > 6}
+          emptyText="No specialties available."
+        />
+        <Text style={styles.helperText}>
+          Forcing content is shown for the selected specialty.
+        </Text>
+      </View>
+
       <View style={styles.buttonsRow}>
         <View style={styles.buttonCellFull}>
-          <ArrivedButton arrived={arrived} onPress={toggleArrived} />
+          <ArrivedButton arrived={arrived} enabled={hasSpecialty} onPress={toggleArrived} />
         </View>
         <View style={styles.buttonCellHalf}>
-          <StartCallButton enabled={arrived} onPress={handleStartCall} />
+          <StartCallButton enabled={hasSpecialty && arrived} onPress={handleStartCall} />
         </View>
         <View style={styles.buttonCellHalf}>
           <CancelCallButton enabled={arrived} onPress={reset} />
@@ -132,6 +175,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 0.6,
+  },
+  helperText: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    fontWeight: '500',
   },
   segment: {
     flexDirection: 'row',

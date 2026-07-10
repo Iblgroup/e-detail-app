@@ -63,6 +63,24 @@ export async function getPendingCount(): Promise<number> {
 }
 
 /**
+ * Doctor ids of calls still queued locally (recorded offline, not yet synced to
+ * call_tracking). Lets the Completed tab include just-made offline calls.
+ */
+export async function getPendingCallDoctorIds(): Promise<string[]> {
+  const rows = await dbGetBatch(1000);
+  const ids = new Set<string>();
+  for (const row of rows) {
+    try {
+      const payload = JSON.parse(row.payload) as { doctorid?: string };
+      if (payload.doctorid) ids.add(String(payload.doctorid));
+    } catch {
+      // skip unparseable rows
+    }
+  }
+  return [...ids];
+}
+
+/**
  * Queue one completed call. Writes locally, then kicks off a best-effort flush
  * (which is a no-op when offline). Resolves once the row is persisted, so the
  * UI can proceed immediately regardless of connectivity.

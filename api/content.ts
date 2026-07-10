@@ -29,7 +29,33 @@ export interface ForcingContentResponse {
 interface ForcingContentParams {
   teamId?: number;
   doctorId?: string;
+  // Institution calls resolve forcing by a chosen specialty instead of a doctor.
+  specialtyId?: number;
 }
+
+export interface Specialty {
+  specialty_id: number;
+  specialty_name: string;
+}
+
+export const specialtiesKey = ['specialties'] as const;
+
+export const getSpecialties = async (): Promise<Specialty[]> => {
+  const res = (await axios.get(ApiEndpoints.specialties)) as unknown as {
+    success: boolean;
+    data: Specialty[];
+  };
+  return res.data ?? [];
+};
+
+// All specialties for the institution-call picker (cached + offline-persisted).
+export const useSpecialties = () => {
+  return useQuery({
+    queryKey: specialtiesKey,
+    queryFn: getSpecialties,
+    staleTime: 30 * 60 * 1000,
+  });
+};
 
 function parseDurationSeconds(duration: string | null | undefined) {
   const match = String(duration ?? '').match(/(\d+)/);
@@ -67,16 +93,25 @@ export function normalizeAssetUrl(url: string) {
 export const forcingContentKey = (
   teamId?: number,
   doctorId?: string,
-) => ['forcing-content', teamId ?? 'no-team', doctorId ?? 'no-doctor'] as const;
+  specialtyId?: number,
+) =>
+  [
+    'forcing-content',
+    teamId ?? 'no-team',
+    doctorId ?? 'no-doctor',
+    specialtyId ?? 'no-specialty',
+  ] as const;
 
 export const getForcingContent = async ({
   teamId,
   doctorId,
+  specialtyId,
 }: ForcingContentParams): Promise<ForcingContentResponse> => {
   return axios.get(ApiEndpoints.forcingContent, {
     params: {
       teamId,
       doctorId,
+      specialtyId,
     },
   }) as unknown as Promise<ForcingContentResponse>;
 };
@@ -135,11 +170,11 @@ function sortForcingRows(rows: ForcingContentRow[]) {
   });
 }
 
-export const useForcingSlides = ({ teamId, doctorId }: ForcingContentParams) => {
+export const useForcingSlides = ({ teamId, doctorId, specialtyId }: ForcingContentParams) => {
   return useQuery({
-    queryKey: forcingContentKey(teamId, doctorId),
-    queryFn: () => getForcingContent({ teamId, doctorId }),
-    enabled: Boolean(teamId && doctorId),
+    queryKey: forcingContentKey(teamId, doctorId, specialtyId),
+    queryFn: () => getForcingContent({ teamId, doctorId, specialtyId }),
+    enabled: Boolean(teamId && (doctorId || specialtyId)),
     staleTime: 5 * 60 * 1000,
     select: (response): DoctorCallSlide[] =>
       sortForcingRows(response.data)

@@ -1,20 +1,20 @@
-import { Redirect } from 'expo-router';
+import { Colors } from '@/constants/theme';
+import { LOGIN_EMAIL_DOMAIN, useAuth } from '@/providers/AuthProvider';
 import { Ionicons } from '@expo/vector-icons';
+import { Redirect } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import { Colors } from '@/constants/theme';
-import { useAuth } from '@/providers/AuthProvider';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function LoginScreen() {
   const { isAuthenticated, isHydrated, login, isSyncingOfflineUsers } = useAuth();
@@ -85,19 +85,25 @@ export default function LoginScreen() {
             <Text style={styles.formSubtitle}>Use your Medical Rep account to continue.</Text>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Username</Text>
+              <Text style={styles.inputLabel}>User ID</Text>
               <View style={styles.inputShell}>
                 <Ionicons name="person-outline" size={18} color={Colors.textMuted} />
                 <TextInput
                   autoCapitalize="none"
                   autoCorrect={false}
-                  placeholder="Enter your username"
+                  placeholder="Enter your ID"
                   placeholderTextColor="#8B96A8"
                   style={styles.input}
                   value={username}
                   onChangeText={setUsername}
                 />
               </View>
+              {username.trim() && !username.includes('@') ? (
+                <Text style={styles.inputHint}>
+                  Signing in as {username.trim()}
+                  {LOGIN_EMAIL_DOMAIN}
+                </Text>
+              ) : null}
             </View>
 
             <View style={styles.inputGroup}>
@@ -271,6 +277,12 @@ const styles = StyleSheet.create({
     flex: 1,
     color: Colors.text,
     fontSize: 15,
+    fontWeight: '600',
+  },
+  inputHint: {
+    marginTop: 6,
+    fontSize: 12,
+    color: Colors.textMuted,
     fontWeight: '600',
   },
   errorBox: {

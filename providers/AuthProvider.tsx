@@ -244,6 +244,19 @@ async function writeStoredSession(session: PersistedSession | null): Promise<voi
   }
 }
 
+// Reps sign in with just their numeric ID (e.g. "020222"); the app appends the
+// company email domain to form the real login identifier (user_validation.email_id,
+// e.g. "020222@ff.searlecompany.com"). Overridable via EXPO_PUBLIC_LOGIN_EMAIL_DOMAIN.
+export const LOGIN_EMAIL_DOMAIN =
+  process.env.EXPO_PUBLIC_LOGIN_EMAIL_DOMAIN || '@ff.searlecompany.com';
+
+function toLoginIdentifier(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed) return trimmed;
+  // If the rep already typed a full email, use it as-is; otherwise append the domain.
+  return trimmed.includes('@') ? trimmed : `${trimmed}${LOGIN_EMAIL_DOMAIN}`;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -286,7 +299,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const login = async (username: string, password: string) => {
+  const login = async (rawId: string, password: string) => {
+    // Reps enter just their ID; sign in with the derived company email
+    // (matched against user_validation.email_id, online and offline).
+    const username = toLoginIdentifier(rawId);
     try {
       const nextSession = await apiLogin(username, password);
       setToken(nextSession.token);

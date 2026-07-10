@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query';
 import axios from '@/config/axios';
 
 /**
@@ -80,4 +81,26 @@ export const postCallsBatch = async (
   calls: BatchCallItem[],
 ): Promise<BatchCallResponse> => {
   return axios.post('/calls/batch', { calls }) as unknown as Promise<BatchCallResponse>;
+};
+
+/** Doctor ids this rep has RECORDED a call for today (from call_tracking). */
+export const completedDoctorIdsKey = (mieId?: string) =>
+  ['completed-doctors', mieId ?? 'no-mie'] as const;
+
+export const getCompletedDoctorIds = async (mieId: string): Promise<string[]> => {
+  const res = (await axios.get('/calls/completed', {
+    params: { mieId },
+  })) as unknown as { success: boolean; doctorIds: string[] };
+  return res.doctorIds ?? [];
+};
+
+// Server-recorded completed doctors, cached (and offline-persisted) so the
+// Completed tab survives app restarts. Refetches when online.
+export const useCompletedDoctorIds = (mieId?: string) => {
+  return useQuery({
+    queryKey: completedDoctorIdsKey(mieId),
+    queryFn: () => getCompletedDoctorIds(mieId as string),
+    enabled: Boolean(mieId),
+    staleTime: 60 * 1000,
+  });
 };

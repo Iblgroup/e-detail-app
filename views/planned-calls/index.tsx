@@ -1,5 +1,5 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { AppSearchInput } from '@/components/ui/AppSearchInput';
 import { ScreenLayout } from '@/components/ui/ScreenLayout';
@@ -8,6 +8,8 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useCallMode } from '@/lib/settings/callModeStore';
 import { DoctorDataRow, useInfinitePlannedDoctors } from '@/api/doctor';
 import { savePlannedForMie, seedPlannedFromBulk } from '@/lib/offline/plannedBulk';
+import { useCompletedDoctorIds } from '@/api/calls';
+import { getPendingCallDoctorIds } from '@/lib/offline/outbox';
 import { ScheduleSectionHeader } from './ScheduleSectionHeader';
 import { DoctorCard, Doctor } from './DoctorCard';
 import { InstitutionCallPanel } from './InstitutionCallPanel';
@@ -42,6 +44,12 @@ export default function PlannedCalls() {
   const { user } = useAuth();
   const { callMode } = useCallMode();
   const [completedCallIds, setCompletedCallIds] = useState(() => getCompletedCallIds('planned'));
+  // Doctor ids of calls queued offline (not yet synced to call_tracking).
+  const [outboxDoctorIds, setOutboxDoctorIds] = useState<string[]>([]);
+  // Doctor ids the rep has RECORDED a call for today (server call_tracking).
+  const { data: serverCompletedIds } = useCompletedDoctorIds(user?.mieId);
+  // Active = calls not yet done; Completed = calls already finished.
+  const [filter, setFilter] = useState<'active' | 'completed'>('active');
   const [searchQuery, setSearchQuery] = useState('');
   const deferredSearchQuery = useDeferredValue(searchQuery.trim());
   // How many of the cached doctors are currently shown (client-side paging).
@@ -76,15 +84,28 @@ export default function PlannedCalls() {
     }
   }, [user?.mieId, user?.teamId, plannedRows.length]);
 
-  // Restart paging when the search changes.
+  // Restart paging when the search or the Active/Completed tab changes.
   useEffect(() => {
     setVisibleCount(LIST_PAGE);
-  }, [deferredSearchQuery]);
+  }, [deferredSearchQuery, filter]);
 
   useFocusEffect(
     useCallback(() => {
       setCompletedCallIds(getCompletedCallIds('planned'));
+      void getPendingCallDoctorIds().then(setOutboxDoctorIds);
     }, [])
+  );
+
+  // A doctor is "completed" if recorded on the server (call_tracking) today, has
+  // a pending offline call queued, or was finished this session (in-memory).
+  const completedSet = useMemo(
+    () =>
+      new Set<string>([
+        ...completedCallIds,
+        ...(serverCompletedIds ?? []),
+        ...outboxDoctorIds,
+      ]),
+    [completedCallIds, serverCompletedIds, outboxDoctorIds]
   );
 
   const doctors = useMemo(() => {
@@ -104,26 +125,45 @@ export default function PlannedCalls() {
     return mappedDoctors
       .map((doctor) => ({
         ...doctor,
-        status: completedCallIds.has(doctor.id) ? 'completed' as const : 'pending' as const,
+        status: completedSet.has(doctor.id) ? 'completed' as const : 'pending' as const,
       }))
       .sort((a, b) => Number(a.status === 'completed') - Number(b.status === 'completed'));
-  }, [completedCallIds, deferredSearchQuery, doctorsQuery.data?.pages]);
+  }, [completedSet, deferredSearchQuery, doctorsQuery.data?.pages]);
 
-  const visibleDoctors = useMemo(
-    () => doctors.slice(0, visibleCount),
-    [doctors, visibleCount]
+  const activeCount = useMemo(
+    () => doctors.filter((doctor) => doctor.status !== 'completed').length,
+    [doctors]
+  );
+  const completedCount = useMemo(
+    () => doctors.filter((doctor) => doctor.status === 'completed').length,
+    [doctors]
   );
 
-  const remaining = doctors.filter((doctor) => doctor.status !== 'completed').length;
+  // Only the doctors for the selected tab (Active = pending, Completed = done).
+  const filteredDoctors = useMemo(
+    () =>
+      doctors.filter((doctor) =>
+        filter === 'completed'
+          ? doctor.status === 'completed'
+          : doctor.status !== 'completed'
+      ),
+    [doctors, filter]
+  );
+
+  const visibleDoctors = useMemo(
+    () => filteredDoctors.slice(0, visibleCount),
+    [filteredDoctors, visibleCount]
+  );
+
   const totalLoaded = doctors.length;
   const hasActiveSearch = deferredSearchQuery.length > 0;
   const sourceLabel = doctorsQuery.data?.pages[0]?.source;
 
   const handleLoadMore = () => {
-    // Reveal the next chunk from the already-cached list — no API call, so it
-    // works the same offline.
+    // Reveal the next chunk from the already-cached (filtered) list — no API
+    // call, so it works the same offline.
     setVisibleCount((count) =>
-      count < doctors.length ? count + LIST_PAGE : count
+      count < filteredDoctors.length ? count + LIST_PAGE : count
     );
   };
 
@@ -150,7 +190,36 @@ export default function PlannedCalls() {
         onEndReachedThreshold={0.35}
         ListHeaderComponent={
           <View style={styles.section}>
-            <ScheduleSectionHeader title="Assigned Doctors" remaining={remaining} />
+            <ScheduleSectionHeader
+              title="Assigned Doctors"
+              count={filter === 'active' ? activeCount : completedCount}
+              action={
+                <View style={styles.filterToggle}>
+                  {(['active', 'completed'] as const).map((key) => {
+                    const selected = filter === key;
+                    return (
+                      <Pressable
+                        key={key}
+                        onPress={() => setFilter(key)}
+                        style={[
+                          styles.filterButton,
+                          selected && styles.filterButtonActive,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.filterText,
+                            selected && styles.filterTextActive,
+                          ]}
+                        >
+                          {key === 'active' ? 'Active' : 'Completed'}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              }
+            />
 
             {doctorsQuery.isLoading ? (
               <View style={styles.stateCard}>
@@ -180,16 +249,37 @@ export default function PlannedCalls() {
               </View>
             ) : null}
 
-            {!doctorsQuery.isLoading && !doctorsQuery.isError && totalLoaded > 0 ? (
+            {!doctorsQuery.isLoading &&
+            !doctorsQuery.isError &&
+            totalLoaded > 0 &&
+            filteredDoctors.length > 0 ? (
               <View style={styles.summaryBlock}>
                 <Text style={styles.summaryText}>
-                  Showing {visibleDoctors.length} of {totalLoaded} assigned doctors for {user?.name ?? 'this rep'}.
+                  Showing {visibleDoctors.length} of {filteredDoctors.length}{' '}
+                  {filter === 'completed' ? 'completed calls' : 'active calls'} for{' '}
+                  {user?.name ?? 'this rep'}.
                 </Text>
                 {sourceLabel === 'temporary-fallback' ? (
                   <Text style={styles.sourceHint}>
                     Temporary planned list from the rep doctor pool.
                   </Text>
                 ) : null}
+              </View>
+            ) : null}
+
+            {!doctorsQuery.isLoading &&
+            !doctorsQuery.isError &&
+            totalLoaded > 0 &&
+            filteredDoctors.length === 0 ? (
+              <View style={styles.stateCard}>
+                <Text style={styles.stateTitle}>
+                  {filter === 'completed' ? 'No completed calls yet' : 'No active calls'}
+                </Text>
+                <Text style={styles.stateText}>
+                  {filter === 'completed'
+                    ? 'Calls you finish will show up here.'
+                    : 'All your planned calls are completed.'}
+                </Text>
               </View>
             ) : null}
 
@@ -221,6 +311,34 @@ const styles = StyleSheet.create({
   section: {
     gap: 12,
     marginBottom: 10,
+  },
+  filterToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#EEF2F6',
+    borderRadius: 10,
+    padding: 3,
+    gap: 2,
+  },
+  filterButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  filterButtonActive: {
+    backgroundColor: Colors.surface,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  filterText: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: Colors.textMuted,
+  },
+  filterTextActive: {
+    color: Colors.primary,
   },
   summaryText: {
     fontSize: 13,
