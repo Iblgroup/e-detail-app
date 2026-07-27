@@ -12,6 +12,9 @@ interface CallAnalyticsProps {
   doctorName?: string;
   callType?: CallType;
   durationSeconds: number;
+  // The previous call's duration, to show how much longer/shorter this one was.
+  // Undefined = no prior call this session (shows "First call").
+  previousDurationSeconds?: number;
   slidesViewed: number;
   totalSlides: number;
   feedback: string;
@@ -130,6 +133,7 @@ export default function CallAnalytics({
   doctorName,
   callType = 'planned',
   durationSeconds,
+  previousDurationSeconds,
   slidesViewed,
   totalSlides,
   feedback,
@@ -140,6 +144,19 @@ export default function CallAnalytics({
 }: CallAnalyticsProps) {
   const safeSlideTimes =
     slideTimes.length > 0 ? slideTimes : Array.from({ length: totalSlides }, () => 0);
+
+  // Duration compared to the previous call: how much longer (+) or shorter (-).
+  const durationDeltaSeconds =
+    previousDurationSeconds != null ? durationSeconds - previousDurationSeconds : null;
+  const durationPill =
+    durationDeltaSeconds == null
+      ? 'First call'
+      : durationDeltaSeconds === 0
+        ? 'Same as last'
+        : `${durationDeltaSeconds > 0 ? '+' : '-'}${formatSlideTime(Math.abs(durationDeltaSeconds))} vs last`;
+  // Longer than last → green (more engagement); shorter → red.
+  const durationTone: 'positive' | 'negative' =
+    durationDeltaSeconds != null && durationDeltaSeconds < 0 ? 'negative' : 'positive';
   const completion = totalSlides > 0 ? Math.round((slidesViewed / totalSlides) * 100) : 0;
   const interest = getDoctorInterest(feedback, doctorInterest);
   const feedbackToneLabel = getFeedbackToneLabel(feedback, doctorInterest);
@@ -226,7 +243,8 @@ export default function CallAnalytics({
             accent={Colors.primary}
             label="Total Duration"
             value={formatDuration(durationSeconds)}
-            pill="+12% vs avg"
+            pill={durationPill}
+            tone={durationTone}
           />
           <AppMetricCard
             icon="document-text-outline"

@@ -7,11 +7,12 @@ import { SlideViewer } from './SlideViewer';
 import { Slide } from './SlideCard';
 import { CallSummaryData, CallSummaryModal } from './CallSummaryModal';
 import { markCallCompleted } from '../callCompletionStore';
+import { getLastCallDuration, setLastCallDuration } from '../lastCallStore';
 import { CallType } from '../callTypes';
 import { queueReturnToNewDoctor } from '@/views/unplanned-calls/returnToNewDoctorStore';
 import { DoctorCallSlide, useForcingSlides } from '@/api/content';
 import { useTeamSkus } from '@/api/sku';
-import { useInfiniteDoctors, type DoctorDataRow } from '@/api/doctor';
+import { useInfiniteDoctors, useInfinitePlannedDoctors, type DoctorDataRow } from '@/api/doctor';
 import { useAuth } from '@/providers/AuthProvider';
 import { enqueueCall } from '@/lib/offline/outbox';
 import { nearestClinicVicinity } from '@/lib/location/distance';
@@ -56,11 +57,9 @@ interface CallScreenProps {
   specialtyId?: number;
   teamId?: number;
   // Institution call type ('walking' | 'group'); when set, the summary requires
-  // picking a doctor from the team.
+  // picking the doctor(s) from the team — a single picker for walking, a
+  // multi-select for group.
   institutionType?: string;
-  // Group call: the doctor ids picked up-front in the panel (comma-separated).
-  // Carried through so a group call records one call_tracking row per attendee.
-  groupDoctorIds?: string;
   // Location captured when the rep marked "Arrived" (offline-capable GPS).
   arrivedLatitude?: number;
   arrivedLongitude?: number;
@@ -98,7 +97,6 @@ export default function CallScreen({
   specialtyId,
   teamId,
   institutionType,
-  groupDoctorIds,
   arrivedLatitude,
   arrivedLongitude,
   arrivedTime,
@@ -106,13 +104,9 @@ export default function CallScreen({
 }: CallScreenProps) {
   const { user } = useAuth();
   const isInstitutionCall = Boolean(institutionType);
-  // Group call: doctors were picked up-front in the panel, so the summary hides
-  // its doctor picker and we record one row per pre-selected attendee.
+  // Group call: multiple doctors, picked at the END (in the summary) like walking
+  // calls; recorded as one call_tracking row per attendee.
   const isGroupCall = institutionType === 'group';
-  const groupDoctorIdList = useMemo(
-    () => (groupDoctorIds ? groupDoctorIds.split(',').filter(Boolean) : []),
-    [groupDoctorIds],
-  );
   // Forcing is resolved by the chosen specialty for institution calls, and by the
   // doctor (their specialties) for doctor calls.
   const forcingDoctorId = isInstitutionCall ? undefined : doctorId;
@@ -125,37 +119,52 @@ export default function CallScreen({
   });
   // The team's SKUs, for the "Samples Provided" picker.
   const sampleOptions = useTeamSkus(teamId).data ?? [];
-  // The team's (cached) doctor pool. Institution calls require picking a doctor
-  // from it; all calls use it to resolve the real doctorid + specialty needed to
-  // record the call to call_tracking.
+  // The team's (cached) doctor pool — used to resolve the real doctorid +
+  // specialty for recording, for ANY call type (including unplanned team doctors).
   const teamDoctorsQuery = useInfiniteDoctors({ teamId });
+  // This rep's OWN assigned doctors (doctor_team_mapping.tsoid = mieId). The
+  // institution-call summary picker offers only these, not the whole team.
+  const plannedDoctorsQuery = useInfinitePlannedDoctors({
+    mieId: user?.mieId ? String(user.mieId) : undefined,
+    teamId,
+  });
   // When the call screen mounts is our best proxy for the call start time.
   const callStartRef = useRef(new Date().toISOString());
   const teamRows = useMemo(
     () => teamDoctorsQuery.data?.pages.flatMap((page) => page.data) ?? [],
     [teamDoctorsQuery.data?.pages],
   );
+  const plannedRows = useMemo(
+    () => plannedDoctorsQuery.data?.pages.flatMap((page) => page.data) ?? [],
+    [plannedDoctorsQuery.data?.pages],
+  );
+  // Summary doctor picker = only the rep's assigned doctors.
   const doctorOptions = useMemo(() => {
     return [
       ...new Set(
-        teamRows
+        plannedRows
           .map((row) => String(row.DOCTORNAME ?? '').trim())
           .filter(Boolean)
       ),
     ].sort((a, b) => a.localeCompare(b));
-  }, [teamRows]);
+  }, [plannedRows]);
   // Resolve a doctor row by id (planned/known calls) or by name (institution
-  // calls where the doctor is chosen in the summary).
+  // calls where the doctor is chosen in the summary). Built from the rep's
+  // assigned doctors AND the team pool, so any picked/known doctor resolves.
+  const resolvableRows = useMemo(
+    () => [...plannedRows, ...teamRows],
+    [plannedRows, teamRows],
+  );
   const doctorById = useMemo(
-    () => new Map(teamRows.map((row) => [String(row.DOCTORID ?? ''), row])),
-    [teamRows],
+    () => new Map(resolvableRows.map((row) => [String(row.DOCTORID ?? ''), row])),
+    [resolvableRows],
   );
   const doctorByName = useMemo(
     () =>
       new Map(
-        teamRows.map((row) => [String(row.DOCTORNAME ?? '').trim().toLowerCase(), row]),
+        resolvableRows.map((row) => [String(row.DOCTORNAME ?? '').trim().toLowerCase(), row]),
       ),
-    [teamRows],
+    [resolvableRows],
   );
   const slides = !hasForcingContext
     ? DEMO_SLIDES
@@ -235,13 +244,12 @@ export default function CallScreen({
     const tsoid = user?.mieId ? String(user.mieId) : '';
     if (!tsoid) return;
 
-    // Start targets: group → one per pre-selected doctor; walking → a single
-    // doctor-less slot; other calls → the incoming doctor id.
-    const starts: { key: string; row?: DoctorDataRow; id?: string }[] = isGroupCall
-      ? groupDoctorIdList.map((id) => ({ key: id, row: doctorById.get(id), id }))
-      : isInstitutionCall
-        ? [{ key: 'walking' }]
-        : [{ key: String(doctorId ?? ''), row: doctorById.get(String(doctorId ?? '')), id: String(doctorId ?? '') }];
+    // Start targets: institution calls (group + walking) pick their doctor(s) at
+    // the End, so start a single doctor-less 'started' row (key 'institution');
+    // other calls start with the incoming doctor id.
+    const starts: { key: string; row?: DoctorDataRow; id?: string }[] = isInstitutionCall
+      ? [{ key: 'institution' }]
+      : [{ key: String(doctorId ?? ''), row: doctorById.get(String(doctorId ?? '')), id: String(doctorId ?? '') }];
 
     for (const target of starts) {
       // Doctor/group starts need a real (numeric) doctorid; a walking start has
@@ -270,8 +278,6 @@ export default function CallScreen({
     user?.mieId,
     user?.userId,
     isInstitutionCall,
-    isGroupCall,
-    groupDoctorIdList,
     doctorById,
     doctorId,
     getClientCallId,
@@ -295,16 +301,23 @@ export default function CallScreen({
       const tsoid = user?.mieId ? String(user.mieId) : '';
       if (!tsoid) return; // can't attribute the call without a rep (tso) id
 
-      // Resolve the target doctor row(s), keyed to match the start record. A
-      // group call updates one row per pre-selected attendee; walking resolves
-      // by the name chosen in the summary (filling the doctor-less start row);
-      // other calls resolve by the incoming id.
+      // Resolve the target doctor row(s), keyed to match the start record. Group
+      // and walking pick their doctor(s) in the summary; the FIRST attendee reuses
+      // the 'institution' 'started' row (client_call_id), any others are new rows.
+      // Doctor calls resolve by the incoming id.
+      const resolveByName = (name: string) => {
+        const row = doctorByName.get(name.trim().toLowerCase());
+        return { row, id: row ? String(row.DOCTORID ?? '') : '' };
+      };
       const targets = isGroupCall
-        ? groupDoctorIdList.map((id) => ({ key: id, row: doctorById.get(id), id }))
+        ? (summary.selectedDoctors ?? []).map((name, index) => {
+            const { row, id } = resolveByName(name);
+            return { key: index === 0 ? 'institution' : `institution-${id || name}`, row, id };
+          })
         : isInstitutionCall && effectiveDoctorName
           ? [(() => {
-              const row = doctorByName.get(effectiveDoctorName.trim().toLowerCase());
-              return { key: 'walking', row, id: row ? String(row.DOCTORID ?? '') : String(doctorId ?? '') };
+              const { row, id } = resolveByName(effectiveDoctorName);
+              return { key: 'institution', row, id: id || String(doctorId ?? '') };
             })()]
           : [(() => {
               const key = String(doctorId ?? '');
@@ -402,7 +415,6 @@ export default function CallScreen({
       user?.userId,
       isInstitutionCall,
       isGroupCall,
-      groupDoctorIdList,
       doctorByName,
       doctorById,
       doctorId,
@@ -421,13 +433,23 @@ export default function CallScreen({
     (summary: CallSummaryData) => {
       if (hasEndedRef.current) return;
 
-      // Institution/walking calls carry the doctor chosen in the summary.
-      const effectiveDoctorName = summary.selectedDoctor?.trim() || doctorName;
+      // Walking calls carry the single doctor chosen in the summary; group calls
+      // carry multiple, shown as a count in the analytics header.
+      const groupCount = summary.selectedDoctors?.length ?? 0;
+      const effectiveDoctorName =
+        isGroupCall && groupCount > 0
+          ? `Group Call · ${groupCount} doctor${groupCount === 1 ? '' : 's'}`
+          : summary.selectedDoctor?.trim() || doctorName;
 
       // Combined feedback for the in-app analytics display (chips + comment).
       const displayFeedback =
         [summary.feedback, summary.feedbackComment].filter(Boolean).join(' — ') ||
         'No feedback provided';
+
+      // Capture the PREVIOUS call's duration (before recording this one) so the
+      // analytics can show how much longer/shorter this call was than the last.
+      const previousDuration = getLastCallDuration();
+      setLastCallDuration(elapsedSeconds);
 
       hasEndedRef.current = true;
       markCallCompleted(doctorId, callType, {
@@ -458,6 +480,7 @@ export default function CallScreen({
           callType,
           doctorName: effectiveDoctorName,
           duration: String(elapsedSeconds),
+          previousDuration: previousDuration != null ? String(previousDuration) : '',
           slidesViewed: String(slidesViewed),
           totalSlides: String(slides.length),
           feedback: displayFeedback,
@@ -474,6 +497,7 @@ export default function CallScreen({
       callType,
       doctorId,
       doctorName,
+      isGroupCall,
       elapsedSeconds,
       returnToNewDoctor,
       slideTimes,
@@ -508,7 +532,8 @@ export default function CallScreen({
         slidesViewed={slidesViewed}
         totalSlides={slides.length}
         sampleOptions={sampleOptions}
-        requireDoctor={isInstitutionCall && !isGroupCall}
+        requireDoctor={isInstitutionCall}
+        multiDoctor={isGroupCall}
         doctorOptions={doctorOptions}
         onCancel={() => setIsSummaryVisible(false)}
         onSubmit={handleSubmitSummary}

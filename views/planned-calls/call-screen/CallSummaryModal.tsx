@@ -1,5 +1,6 @@
 import { AppButton } from '@/components/ui/AppButton';
 import { AppBottomSheetSelect } from '@/components/ui/AppBottomSheetSelect';
+import { AppMultiSelectSheet, MultiSelectOption } from '@/components/ui/AppMultiSelectSheet';
 import { Colors } from '@/constants/theme';
 import { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
@@ -13,8 +14,10 @@ export interface CallSummaryData {
   jointCall: string;
   samplesProvided: string;
   doctorInterest: 'High' | 'Medium' | 'Low';
-  // Doctor picked in the summary (institution/walking calls).
+  // Doctor picked in the summary (walking calls — single).
   selectedDoctor?: string;
+  // Doctors picked in the summary (group calls — multiple, by name).
+  selectedDoctors?: string[];
 }
 
 interface CallSummaryModalProps {
@@ -26,6 +29,9 @@ interface CallSummaryModalProps {
   sampleOptions?: string[];
   // When set, a doctor must be picked (institution/walking calls) before submit.
   requireDoctor?: boolean;
+  // When set (group calls), the doctor picker is a multi-select — pick every
+  // attendee. Otherwise it's a single-doctor picker (walking calls).
+  multiDoctor?: boolean;
   doctorOptions?: string[];
   onCancel: () => void;
   onSubmit: (summary: CallSummaryData) => void;
@@ -59,6 +65,7 @@ export function CallSummaryModal({
   totalSlides,
   sampleOptions = [],
   requireDoctor = false,
+  multiDoctor = false,
   doctorOptions = [],
   onCancel,
   onSubmit,
@@ -67,12 +74,20 @@ export function CallSummaryModal({
   const insets = useSafeAreaInsets();
   const isLandscape = width > height;
   const [selectedDoctor, setSelectedDoctor] = useState('');
+  const [selectedDoctors, setSelectedDoctors] = useState<string[]>([]);
   const [jointCall, setJointCall] = useState<string[]>(['No']);
   const [samplesProvided, setSamplesProvided] = useState('None');
-  const canSubmit = !requireDoctor || selectedDoctor.trim().length > 0;
+  const doctorHasSelection = multiDoctor
+    ? selectedDoctors.length > 0
+    : selectedDoctor.trim().length > 0;
+  const canSubmit = !requireDoctor || doctorHasSelection;
   const sampleSelectOptions = useMemo(
     () => ['None', ...sampleOptions],
     [sampleOptions]
+  );
+  const doctorMultiOptions = useMemo<MultiSelectOption[]>(
+    () => doctorOptions.map((name) => ({ value: name, label: name })),
+    [doctorOptions],
   );
   // Doctor Interest hidden for now; keep a default for the submitted report.
   const [doctorInterest] = useState<'High' | 'Medium' | 'Low'>('Medium');
@@ -147,20 +162,34 @@ export function CallSummaryModal({
             {requireDoctor ? (
               <View style={styles.doctorField}>
                 <Text style={styles.fieldLabel}>
-                  Doctor <Text style={styles.requiredMark}>*</Text>
+                  {multiDoctor ? 'Doctors' : 'Doctor'} <Text style={styles.requiredMark}>*</Text>
                 </Text>
-                <AppBottomSheetSelect
-                  title="Select Doctor"
-                  placeholder="Select a doctor..."
-                  options={doctorOptions}
-                  value={selectedDoctor}
-                  onChange={setSelectedDoctor}
-                  searchable
-                  emptyText="No doctors available for this team."
-                />
-                {!selectedDoctor ? (
+                {multiDoctor ? (
+                  <AppMultiSelectSheet
+                    title="Select Doctors"
+                    placeholder="Select doctors..."
+                    options={doctorMultiOptions}
+                    values={selectedDoctors}
+                    onChange={setSelectedDoctors}
+                    searchable
+                    emptyText="No doctors available for this team."
+                  />
+                ) : (
+                  <AppBottomSheetSelect
+                    title="Select Doctor"
+                    placeholder="Select a doctor..."
+                    options={doctorOptions}
+                    value={selectedDoctor}
+                    onChange={setSelectedDoctor}
+                    searchable
+                    emptyText="No doctors available for this team."
+                  />
+                )}
+                {!doctorHasSelection ? (
                   <Text style={styles.requiredHint}>
-                    Please select a doctor to submit this call.
+                    {multiDoctor
+                      ? 'Please select at least one doctor to submit this call.'
+                      : 'Please select a doctor to submit this call.'}
                   </Text>
                 ) : null}
               </View>
@@ -293,6 +322,7 @@ export function CallSummaryModal({
                   samplesProvided,
                   doctorInterest,
                   selectedDoctor: selectedDoctor.trim() || undefined,
+                  selectedDoctors: multiDoctor ? selectedDoctors : undefined,
                 });
               }}
               variant="primary"

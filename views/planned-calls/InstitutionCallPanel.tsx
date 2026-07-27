@@ -2,9 +2,7 @@ import { Colors } from '@/constants/theme';
 import { useAuth } from '@/providers/AuthProvider';
 import { useArrival } from '@/lib/location/useArrival';
 import { useSpecialties } from '@/api/content';
-import { useInfiniteDoctors } from '@/api/doctor';
 import { AppBottomSheetSelect } from '@/components/ui/AppBottomSheetSelect';
-import { AppMultiSelectSheet, MultiSelectOption } from '@/components/ui/AppMultiSelectSheet';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
@@ -31,7 +29,6 @@ export function InstitutionCallPanel() {
   const { user } = useAuth();
   const [callType, setCallType] = useState<InstitutionCallType>('walking');
   const { arrived, arrival, toggleArrived, reset } = useArrival();
-  const isGroupCall = callType === 'group';
 
   // Forcing for an institution call is driven by the chosen specialty.
   const specialtiesQuery = useSpecialties();
@@ -47,29 +44,9 @@ export function InstitutionCallPanel() {
   );
   const hasSpecialty = Boolean(selectedSpecialty);
 
-  // A group call is made to a set of doctors picked from the team pool.
-  const teamDoctorsQuery = useInfiniteDoctors({
-    teamId: user?.teamId,
-    mieId: user?.mieId ? String(user.mieId) : undefined,
-  });
-  const doctorOptions = useMemo<MultiSelectOption[]>(() => {
-    const rows = teamDoctorsQuery.data?.pages.flatMap((page) => page.data) ?? [];
-    const seen = new Set<string>();
-    const options: MultiSelectOption[] = [];
-    for (const row of rows) {
-      if (row.DOCTORID == null || !row.DOCTORNAME) continue;
-      const value = String(row.DOCTORID);
-      if (seen.has(value)) continue;
-      seen.add(value);
-      options.push({ value, label: row.DOCTORNAME });
-    }
-    return options.sort((a, b) => a.label.localeCompare(b.label));
-  }, [teamDoctorsQuery.data]);
-  const [selectedDoctorIds, setSelectedDoctorIds] = useState<string[]>([]);
-  const hasDoctors = selectedDoctorIds.length > 0;
-
-  // Group calls also require picking at least one doctor; walking calls don't.
-  const readyToArrive = hasSpecialty && (!isGroupCall || hasDoctors);
+  // Both group and walking calls pick their doctor(s) at the END (in the call
+  // summary), so the panel only needs a specialty before Arrive.
+  const readyToArrive = hasSpecialty;
 
   const selected = CALL_TYPES.find((option) => option.key === callType);
 
@@ -87,27 +64,16 @@ export function InstitutionCallPanel() {
     reset();
   };
 
-  // Changing the doctor set also invalidates a prior arrival.
-  const handleDoctorsChange = (ids: string[]) => {
-    setSelectedDoctorIds(ids);
-    if (arrived) reset();
-  };
-
   const handleStartCall = () => {
-    const doctorName = isGroupCall
-      ? `Group Call · ${selectedDoctorIds.length} doctor${selectedDoctorIds.length === 1 ? '' : 's'}`
-      : `${selected?.label ?? 'Institution Call'}`;
-
     router.push({
       pathname: '/call/[id]',
       params: {
         id: `institution-${callType}`,
         callType: 'planned',
-        doctorName,
+        doctorName: selected?.label ?? 'Institution Call',
         teamId: user?.teamId ? String(user.teamId) : undefined,
         specialtyId: selectedSpecialty ? String(selectedSpecialty.specialty_id) : undefined,
         institution: callType,
-        groupDoctorIds: isGroupCall ? selectedDoctorIds.join(',') : undefined,
         latitude: arrival?.latitude != null ? String(arrival.latitude) : undefined,
         longitude: arrival?.longitude != null ? String(arrival.longitude) : undefined,
         arrivedTime: arrival?.arrivedTime,
@@ -165,43 +131,21 @@ export function InstitutionCallPanel() {
       </View>
 
       <View style={styles.card}>
-        {isGroupCall ? (
-          <View style={styles.field}>
-            <Text style={styles.cardLabel}>Doctors</Text>
-            <AppMultiSelectSheet
-              title="Select Doctors"
-              placeholder={
-                teamDoctorsQuery.isLoading ? 'Loading doctors...' : 'Select doctors...'
-              }
-              options={doctorOptions}
-              values={selectedDoctorIds}
-              onChange={handleDoctorsChange}
-              searchable={doctorOptions.length > 6}
-              emptyText="No doctors available."
-            />
-            <Text style={styles.helperText}>
-              Select every doctor attending this group call.
-            </Text>
-          </View>
-        ) : null}
-
-        <View style={styles.field}>
-          <Text style={styles.cardLabel}>Specialty</Text>
-          <AppBottomSheetSelect
-            title="Select Specialty"
-            placeholder={
-              specialtiesQuery.isLoading ? 'Loading specialties...' : 'Select a specialty...'
-            }
-            options={specialtyOptions}
-            value={selectedSpecialtyName}
-            onChange={handleSpecialtyChange}
-            searchable={specialtyOptions.length > 6}
-            emptyText="No specialties available."
-          />
-          <Text style={styles.helperText}>
-            Forcing content is shown for the selected specialty.
-          </Text>
-        </View>
+        <Text style={styles.cardLabel}>Specialty</Text>
+        <AppBottomSheetSelect
+          title="Select Specialty"
+          placeholder={
+            specialtiesQuery.isLoading ? 'Loading specialties...' : 'Select a specialty...'
+          }
+          options={specialtyOptions}
+          value={selectedSpecialtyName}
+          onChange={handleSpecialtyChange}
+          searchable={specialtyOptions.length > 6}
+          emptyText="No specialties available."
+        />
+        <Text style={styles.helperText}>
+          Forcing content is shown for the selected specialty.
+        </Text>
       </View>
 
       <View style={styles.buttonsRow}>
@@ -234,9 +178,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 2,
-  },
-  field: {
-    gap: 12,
   },
   cardLabel: {
     color: Colors.textMuted,

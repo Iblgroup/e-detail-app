@@ -42,30 +42,66 @@ export function AppMultiSelectSheet({
   const [modalVisible, setModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const backdropOpacity = useRef(new Animated.Value(0)).current;
+  // Width of the trigger's text area, so we can fit as many names as possible
+  // and overflow the rest into a "+N" count.
+  const [triggerTextWidth, setTriggerTextWidth] = useState(0);
+  // Selection snapshotted when the sheet opens — used to sort selected-first
+  // without rows jumping around as the user toggles during this session.
+  const [openSelected, setOpenSelected] = useState<Set<string>>(new Set());
 
   const selectedSet = useMemo(() => new Set(values), [values]);
+
+  // Show the selected rows first (snapshot order), then the rest. A stable sort
+  // keeps each group in its original order.
+  const orderedOptions = useMemo(() => {
+    return [...options].sort(
+      (a, b) => (openSelected.has(b.value) ? 1 : 0) - (openSelected.has(a.value) ? 1 : 0),
+    );
+  }, [options, openSelected]);
 
   const filteredOptions = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
     if (!normalizedQuery) {
-      return options;
+      return orderedOptions;
     }
 
-    return options.filter((option) =>
+    return orderedOptions.filter((option) =>
       option.label.toLowerCase().includes(normalizedQuery)
     );
-  }, [options, searchQuery]);
+  }, [orderedOptions, searchQuery]);
 
-  // Trigger summary: the chosen labels, or a count once it grows long.
+  // Trigger summary: fit as many selected names as the width allows, then "+N".
   const summary = useMemo(() => {
-    if (values.length === 0) return '';
     const labels = options
       .filter((option) => selectedSet.has(option.value))
       .map((option) => option.label);
-    if (labels.length <= 2) return labels.join(', ');
-    return `${labels.length} selected`;
-  }, [options, selectedSet, values.length]);
+    if (labels.length === 0) return '';
+
+    // Before the first layout, fall back to a name + count.
+    if (triggerTextWidth <= 0) {
+      return labels.length <= 2
+        ? labels.join(', ')
+        : `${labels[0]}, +${labels.length - 1}`;
+    }
+
+    // Estimate width by an average glyph width; reserve room for the " +NN".
+    const CHAR_W = 8.5; // ~px per char at 14px / weight 600
+    const SEP_W = CHAR_W * 2; // ", "
+    const RESERVE = 50; // room for the overflow " +N" chip
+    const avail = triggerTextWidth - RESERVE;
+
+    let used = 0;
+    const shown: string[] = [];
+    for (const label of labels) {
+      const w = label.length * CHAR_W + (shown.length ? SEP_W : 0);
+      if (shown.length > 0 && used + w > avail) break;
+      used += w;
+      shown.push(label);
+    }
+    const hidden = labels.length - shown.length;
+    return hidden > 0 ? `${shown.join(', ')} +${hidden}` : shown.join(', ');
+  }, [options, selectedSet, triggerTextWidth]);
 
   useEffect(() => {
     if (sheetVisible) {
@@ -107,12 +143,14 @@ export function AppMultiSelectSheet({
       <Pressable
         onPress={() => {
           setSearchQuery('');
+          setOpenSelected(new Set(values));
           setSheetVisible(true);
         }}
         style={({ pressed }) => [styles.trigger, pressed && styles.triggerPressed]}
       >
         <Text
           numberOfLines={1}
+          onLayout={(e) => setTriggerTextWidth(e.nativeEvent.layout.width)}
           style={[styles.triggerText, values.length === 0 && styles.placeholderText]}
         >
           {summary || placeholder}

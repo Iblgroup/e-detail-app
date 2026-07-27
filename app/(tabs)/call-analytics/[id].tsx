@@ -50,6 +50,7 @@ export default function CallAnalyticsRoute() {
   const params = useLocalSearchParams<{
     id: string;
     duration?: string;
+    previousDuration?: string;
     slidesViewed?: string;
     totalSlides?: string;
     feedback?: string;
@@ -67,11 +68,21 @@ export default function CallAnalyticsRoute() {
   const returnToNewDoctor =
     (Array.isArray(params.returnToNewDoctor) ? params.returnToNewDoctor[0] : params.returnToNewDoctor) === '1';
 
+  // Empty string = no previous call to compare against (first call this session).
+  const rawPrevDuration = Array.isArray(params.previousDuration)
+    ? params.previousDuration[0]
+    : params.previousDuration;
+  const previousDurationSeconds =
+    rawPrevDuration && Number.isFinite(Number(rawPrevDuration))
+      ? Number(rawPrevDuration)
+      : undefined;
+
   return (
     <CallAnalytics
       doctorName={doctorName ?? DOCTOR_NAMES[doctorId]}
       callType={normalizedCallType}
       durationSeconds={parseNumber(params.duration)}
+      previousDurationSeconds={previousDurationSeconds}
       slidesViewed={parseNumber(params.slidesViewed)}
       totalSlides={parseNumber(params.totalSlides, 1)}
       feedback={params.feedback || 'No feedback provided'}
