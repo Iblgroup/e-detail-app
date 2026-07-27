@@ -11,6 +11,7 @@ export interface DoctorDataRow {
   SpecialtyId?: number;
   SpecialtyByCommercial?: string;
   SpecialtyByIkon?: string;
+  /** doctors.city */
   CITY?: string;
   // Doctor clinic location (stored as text in the DB). Day + evening clinics,
   // used to flag whether the rep's arrival GPS is within the clinic vicinity.
@@ -19,6 +20,12 @@ export interface DoctorDataRow {
   DocEveLat?: string;
   DocEveLng?: string;
   ClinicAddress?: string;
+  /** doctors.pmdc — the doctor's PMDC registration number. */
+  PMDC?: string;
+  /** doctors.class — the doctor's class (A1 / A2 / A3 / A4 ...). */
+  DoctorClass?: string;
+  /** YYYY-MM-DD of the rep's most recent recorded call, null when never called. */
+  LastVisit?: string | null;
 }
 
 export interface DoctorDataResponse {

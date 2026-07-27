@@ -10,9 +10,18 @@ export interface Doctor {
   name: string;
   specialty: string;
   specialtyId?: number;
+  /** Hospital — no source column in `doctors` yet, so a dash for fetched rows. */
   hospital: string;
+  /** Clinic address (doctors.doc_clinic_address). */
   address?: string;
+  /** City (doctors.city). */
+  city?: string;
+  /** Date of the rep's last recorded call, or a dash. */
   lastVisit: string;
+  /** doctors.class — A1 / A2 / A3 / A4 ... */
+  doctorClass?: string;
+  /** doctors.pmdc registration number. */
+  pmdc?: string;
   scheduledTime?: string;
   status?: 'pending' | 'completed';
   isNewDoctor?: boolean;
@@ -76,7 +85,10 @@ export function DoctorCard({ doctor, callType = 'planned', onPress }: DoctorCard
         specialtyId: doctor.specialtyId ? String(doctor.specialtyId) : undefined,
         hospital: doctor.hospital,
         address: doctor.address,
+        city: doctor.city,
         lastVisit: doctor.lastVisit,
+        doctorClass: doctor.doctorClass,
+        pmdc: doctor.pmdc,
         scheduledTime: doctor.scheduledTime,
         teamId: doctor.teamId ? String(doctor.teamId) : undefined,
       },
@@ -123,7 +135,8 @@ export function DoctorCard({ doctor, callType = 'planned', onPress }: DoctorCard
         <View style={[styles.metaRow, isCompleted && styles.metaRowCompleted]}>
           <View style={styles.metaItem}>
             <Ionicons name="location-outline" size={12} color={Colors.textMuted} />
-            <Text style={styles.metaText}>{doctor.hospital}</Text>
+            {/* City on the list row; hospital + address live on the detail screen. */}
+            <Text style={styles.metaText}>{doctor.city || doctor.address}</Text>
           </View>
           <View style={styles.metaItem}>
             <Ionicons name="time-outline" size={12} color={Colors.textMuted} />

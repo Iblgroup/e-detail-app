@@ -40,6 +40,15 @@ const rfiData = {
   completed: 284,
 };
 
+// RFI (Plan / Completed) card is hidden for now — flip to true to bring it back.
+const SHOW_RFI = false;
+
+// Calls completed: this month vs previous month.
+const monthlyCompleted = {
+  thisMonth: 284,
+  previousMonth: 262,
+};
+
 function formatRangeLabel(start: Date, end: Date) {
   const opts: Intl.DateTimeFormatOptions = {
     year: 'numeric',
@@ -140,11 +149,33 @@ export default function AnalyticsScreen() {
               value={metric.value}
               pill={metric.change}
               tone={metric.tone}
+              style={styles.metricCardFill}
             />
           </View>
         ))}
       </View>
 
+      <View style={styles.rfiCard}>
+        <View style={styles.rfiHeader}>
+          <View style={styles.rfiTitleRow}>
+            <Ionicons name="checkmark-done-outline" size={20} color={Colors.primary} />
+            <Text style={styles.sectionTitle}>Calls Completed</Text>
+            <Text style={styles.rfiSubtitle}>(This / Previous Month)</Text>
+          </View>
+        </View>
+        <View style={styles.rfiStatsRow}>
+          <View style={styles.rfiStatBox}>
+            <Text style={styles.rfiStatLabel}>This Month</Text>
+            <Text style={styles.rfiStatValue}>{monthlyCompleted.thisMonth}</Text>
+          </View>
+          <View style={styles.rfiStatBox}>
+            <Text style={styles.rfiStatLabel}>Previous Month</Text>
+            <Text style={styles.rfiStatValue}>{monthlyCompleted.previousMonth}</Text>
+          </View>
+        </View>
+      </View>
+
+      {SHOW_RFI && (
       <View style={styles.rfiCard}>
         <View style={styles.rfiHeader}>
           <View style={styles.rfiTitleRow}>
@@ -183,6 +214,7 @@ export default function AnalyticsScreen() {
           </Text>
         </View>
       </View>
+      )}
 
       <View style={styles.chartsGrid}>
         <AppChartCard
@@ -285,6 +317,10 @@ const styles = StyleSheet.create({
     flex: 1,
     flexBasis: 0,
     minWidth: 0,
+  },
+  // Fill the cell's stretched height so all four cards match the tallest.
+  metricCardFill: {
+    flex: 1,
   },
   chartsGrid: {
     gap: 16,

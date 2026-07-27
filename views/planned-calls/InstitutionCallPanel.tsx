@@ -2,7 +2,9 @@ import { Colors } from '@/constants/theme';
 import { useAuth } from '@/providers/AuthProvider';
 import { useArrival } from '@/lib/location/useArrival';
 import { useSpecialties } from '@/api/content';
+import { useInfiniteDoctors } from '@/api/doctor';
 import { AppBottomSheetSelect } from '@/components/ui/AppBottomSheetSelect';
+import { AppMultiSelectSheet, MultiSelectOption } from '@/components/ui/AppMultiSelectSheet';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
@@ -21,7 +23,7 @@ interface CallTypeOption {
 }
 
 const CALL_TYPES: CallTypeOption[] = [
-  { key: 'group', label: 'Group Call', icon: 'people-outline', disabled: true },
+  { key: 'group', label: 'Group Call', icon: 'people-outline' },
   { key: 'walking', label: 'Walking/Parking Call', icon: 'car-outline' },
 ];
 
@@ -29,6 +31,7 @@ export function InstitutionCallPanel() {
   const { user } = useAuth();
   const [callType, setCallType] = useState<InstitutionCallType>('walking');
   const { arrived, arrival, toggleArrived, reset } = useArrival();
+  const isGroupCall = callType === 'group';
 
   // Forcing for an institution call is driven by the chosen specialty.
   const specialtiesQuery = useSpecialties();
@@ -44,7 +47,37 @@ export function InstitutionCallPanel() {
   );
   const hasSpecialty = Boolean(selectedSpecialty);
 
+  // A group call is made to a set of doctors picked from the team pool.
+  const teamDoctorsQuery = useInfiniteDoctors({
+    teamId: user?.teamId,
+    mieId: user?.mieId ? String(user.mieId) : undefined,
+  });
+  const doctorOptions = useMemo<MultiSelectOption[]>(() => {
+    const rows = teamDoctorsQuery.data?.pages.flatMap((page) => page.data) ?? [];
+    const seen = new Set<string>();
+    const options: MultiSelectOption[] = [];
+    for (const row of rows) {
+      if (row.DOCTORID == null || !row.DOCTORNAME) continue;
+      const value = String(row.DOCTORID);
+      if (seen.has(value)) continue;
+      seen.add(value);
+      options.push({ value, label: row.DOCTORNAME });
+    }
+    return options.sort((a, b) => a.label.localeCompare(b.label));
+  }, [teamDoctorsQuery.data]);
+  const [selectedDoctorIds, setSelectedDoctorIds] = useState<string[]>([]);
+  const hasDoctors = selectedDoctorIds.length > 0;
+
+  // Group calls also require picking at least one doctor; walking calls don't.
+  const readyToArrive = hasSpecialty && (!isGroupCall || hasDoctors);
+
   const selected = CALL_TYPES.find((option) => option.key === callType);
+
+  const handleCallTypeChange = (key: InstitutionCallType) => {
+    if (key === callType) return;
+    setCallType(key);
+    reset();
+  };
 
   // Changing the specialty invalidates the current arrival (a fresh vicinity
   // check belongs to the newly chosen specialty), so reset the Arrived state.
@@ -54,16 +87,27 @@ export function InstitutionCallPanel() {
     reset();
   };
 
+  // Changing the doctor set also invalidates a prior arrival.
+  const handleDoctorsChange = (ids: string[]) => {
+    setSelectedDoctorIds(ids);
+    if (arrived) reset();
+  };
+
   const handleStartCall = () => {
+    const doctorName = isGroupCall
+      ? `Group Call · ${selectedDoctorIds.length} doctor${selectedDoctorIds.length === 1 ? '' : 's'}`
+      : `${selected?.label ?? 'Institution Call'}`;
+
     router.push({
       pathname: '/call/[id]',
       params: {
         id: `institution-${callType}`,
         callType: 'planned',
-        doctorName: `${selected?.label ?? 'Institution Call'}`,
+        doctorName,
         teamId: user?.teamId ? String(user.teamId) : undefined,
         specialtyId: selectedSpecialty ? String(selectedSpecialty.specialty_id) : undefined,
         institution: callType,
+        groupDoctorIds: isGroupCall ? selectedDoctorIds.join(',') : undefined,
         latitude: arrival?.latitude != null ? String(arrival.latitude) : undefined,
         longitude: arrival?.longitude != null ? String(arrival.longitude) : undefined,
         arrivedTime: arrival?.arrivedTime,
@@ -83,7 +127,7 @@ export function InstitutionCallPanel() {
               <Pressable
                 key={option.key}
                 disabled={option.disabled}
-                onPress={() => setCallType(option.key)}
+                onPress={() => handleCallTypeChange(option.key)}
                 style={({ pressed }) => [
                   styles.segmentButton,
                   isActive && styles.segmentButtonActive,
@@ -121,29 +165,51 @@ export function InstitutionCallPanel() {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardLabel}>Specialty</Text>
-        <AppBottomSheetSelect
-          title="Select Specialty"
-          placeholder={
-            specialtiesQuery.isLoading ? 'Loading specialties...' : 'Select a specialty...'
-          }
-          options={specialtyOptions}
-          value={selectedSpecialtyName}
-          onChange={handleSpecialtyChange}
-          searchable={specialtyOptions.length > 6}
-          emptyText="No specialties available."
-        />
-        <Text style={styles.helperText}>
-          Forcing content is shown for the selected specialty.
-        </Text>
+        {isGroupCall ? (
+          <View style={styles.field}>
+            <Text style={styles.cardLabel}>Doctors</Text>
+            <AppMultiSelectSheet
+              title="Select Doctors"
+              placeholder={
+                teamDoctorsQuery.isLoading ? 'Loading doctors...' : 'Select doctors...'
+              }
+              options={doctorOptions}
+              values={selectedDoctorIds}
+              onChange={handleDoctorsChange}
+              searchable={doctorOptions.length > 6}
+              emptyText="No doctors available."
+            />
+            <Text style={styles.helperText}>
+              Select every doctor attending this group call.
+            </Text>
+          </View>
+        ) : null}
+
+        <View style={styles.field}>
+          <Text style={styles.cardLabel}>Specialty</Text>
+          <AppBottomSheetSelect
+            title="Select Specialty"
+            placeholder={
+              specialtiesQuery.isLoading ? 'Loading specialties...' : 'Select a specialty...'
+            }
+            options={specialtyOptions}
+            value={selectedSpecialtyName}
+            onChange={handleSpecialtyChange}
+            searchable={specialtyOptions.length > 6}
+            emptyText="No specialties available."
+          />
+          <Text style={styles.helperText}>
+            Forcing content is shown for the selected specialty.
+          </Text>
+        </View>
       </View>
 
       <View style={styles.buttonsRow}>
         <View style={styles.buttonCellFull}>
-          <ArrivedButton arrived={arrived} enabled={hasSpecialty} onPress={toggleArrived} />
+          <ArrivedButton arrived={arrived} enabled={readyToArrive} onPress={toggleArrived} />
         </View>
         <View style={styles.buttonCellHalf}>
-          <StartCallButton enabled={hasSpecialty && arrived} onPress={handleStartCall} />
+          <StartCallButton enabled={readyToArrive && arrived} onPress={handleStartCall} />
         </View>
         <View style={styles.buttonCellHalf}>
           <CancelCallButton enabled={arrived} onPress={reset} />
@@ -168,6 +234,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 2,
+  },
+  field: {
+    gap: 12,
   },
   cardLabel: {
     color: Colors.textMuted,

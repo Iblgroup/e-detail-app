@@ -6,39 +6,18 @@ import { ScreenLayout } from '@/components/ui/ScreenLayout';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/providers/AuthProvider';
 import { useCallMode } from '@/lib/settings/callModeStore';
-import { DoctorDataRow, useInfinitePlannedDoctors } from '@/api/doctor';
+import { useInfinitePlannedDoctors } from '@/api/doctor';
 import { savePlannedForMie, seedPlannedFromBulk } from '@/lib/offline/plannedBulk';
 import { useCompletedDoctorIds } from '@/api/calls';
 import { getPendingCallDoctorIds } from '@/lib/offline/outbox';
 import { ScheduleSectionHeader } from './ScheduleSectionHeader';
-import { DoctorCard, Doctor } from './DoctorCard';
+import { DoctorCard } from './DoctorCard';
+import { mapDoctorRows } from './mapDoctor';
 import { InstitutionCallPanel } from './InstitutionCallPanel';
 import { getCompletedCallIds } from './callCompletionStore';
 
-function asText(value: unknown, fallback: string) {
-  if (value === null || value === undefined) {
-    return fallback;
-  }
-
-  const text = String(value).trim();
-  return text || fallback;
-}
-
 // Doctors revealed per scroll, sliced from the fully-cached list (no network).
 const LIST_PAGE = 30;
-
-function mapDoctors(rows: DoctorDataRow[]): Doctor[] {
-  return rows.map((row) => ({
-    id: String(row.DOCTORID ?? ''),
-    name: asText(row.DOCTORNAME, 'Unknown Doctor'),
-    specialty: asText(row.SpecialtyByCommercial, asText(row.SpecialtyByIkon, 'Unknown Specialty')),
-    specialtyId: row.SpecialtyId,
-    hospital: asText(row.CITY, 'Unknown City'),
-    address: asText(row.CITY, 'Unknown City'),
-    lastVisit: 'No visit recorded',
-    teamId: row.TEAMID,
-  }));
-}
 
 export default function PlannedCalls() {
   const { user } = useAuth();
@@ -109,7 +88,7 @@ export default function PlannedCalls() {
   );
 
   const doctors = useMemo(() => {
-    let mappedDoctors = mapDoctors(
+    let mappedDoctors = mapDoctorRows(
       doctorsQuery.data?.pages.flatMap((page) => page.data) ?? []
     );
 
@@ -172,14 +151,14 @@ export default function PlannedCalls() {
   // Institution mode replaces the doctor listing with group / walking calls.
   if (callMode === 'institution') {
     return (
-      <ScreenLayout title="Planned Calls" notificationCount={1}>
+      <ScreenLayout title="Call Reporting" notificationCount={1}>
         <InstitutionCallPanel />
       </ScreenLayout>
     );
   }
 
   return (
-    <ScreenLayout title="Planned Calls" notificationCount={1} scrollable={false}>
+    <ScreenLayout title="Call Reporting" notificationCount={1} scrollable={false}>
       <FlatList
         data={visibleDoctors}
         keyExtractor={(doctor) => doctor.id}

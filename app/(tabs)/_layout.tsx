@@ -23,24 +23,24 @@ export default function TabLayout() {
         tabBarLabelStyle: { fontSize: 14 },
       }}>
       <Tabs.Screen
-        name="analytics"
+        name="index"
         options={{
-          title: 'Analytics',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="chart.bar.xaxis" color={color} />,
+          title: 'Dashboard',
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="house.fill" color={color} />,
         }}
       />
       <Tabs.Screen
         name="planned-calls"
         options={{
-          title: 'Planned',
+          title: 'Call Reporting',
           tabBarIcon: ({ color }) => <IconSymbol size={24} name="calendar.badge.checkmark" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="unplanned-calls"
+        name="analytics"
         options={{
-          title: 'Unplanned',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="person.wave.2.fill" color={color} />,
+          title: 'Analytics',
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="chart.bar.xaxis" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -63,11 +63,13 @@ export default function TabLayout() {
         options={{ href: null }}
       />
 
-      {/* Dashboard hidden for now (route kept; tab removed via href: null). */}
+      {/* Unplanned hidden for now — the route is kept because the call flow still
+          navigates to it (new-doctor return), but it has no tab. */}
       <Tabs.Screen
-        name="index"
+        name="unplanned-calls"
         options={{ href: null }}
       />
+
       <Tabs.Screen
         name="faqs"
         options={{ href: null }}

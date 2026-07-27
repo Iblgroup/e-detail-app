@@ -2,9 +2,10 @@ import { AppButton } from '@/components/ui/AppButton';
 import { AppSearchInput } from '@/components/ui/AppSearchInput';
 import { ScreenLayout } from '@/components/ui/ScreenLayout';
 import { Colors } from '@/constants/theme';
-import { DoctorDataRow, useInfiniteDoctors } from '@/api/doctor';
+import { useInfiniteDoctors } from '@/api/doctor';
 import { useAuth } from '@/providers/AuthProvider';
 import { Doctor, DoctorCard } from '@/views/planned-calls/DoctorCard';
+import { DASH, mapDoctorRows } from '@/views/planned-calls/mapDoctor';
 import { ScheduleSectionHeader } from '@/views/planned-calls/ScheduleSectionHeader';
 import { getCompletedCallIds } from '@/views/planned-calls/callCompletionStore';
 import { consumeReturnToNewDoctor } from '@/views/unplanned-calls/returnToNewDoctorStore';
@@ -32,28 +33,6 @@ const emptyNewDoctorForm = {
   hospital: '',
   address: '',
 };
-
-function asText(value: unknown, fallback: string) {
-  if (value === null || value === undefined) {
-    return fallback;
-  }
-
-  const text = String(value).trim();
-  return text || fallback;
-}
-
-function mapDoctors(rows: DoctorDataRow[]): Doctor[] {
-  return rows.map((row) => ({
-    id: String(row.DOCTORID ?? ''),
-    name: asText(row.DOCTORNAME, 'Unknown Doctor'),
-    specialty: asText(row.SpecialtyByIkon, asText(row.SpecialtyByCommercial, 'Unknown Specialty')),
-    specialtyId: row.SpecialtyId,
-    hospital: asText(row.CITY, 'Unknown City'),
-    address: asText(row.CITY, 'Unknown City'),
-    lastVisit: 'No visit recorded',
-    teamId: row.TEAMID,
-  }));
-}
 
 export default function UnplannedCalls() {
   const { user } = useAuth();
@@ -128,7 +107,7 @@ export default function UnplannedCalls() {
   );
 
   const doctors = useMemo(() => {
-    const fetchedDoctors = mapDoctors(doctorsQuery.data?.pages.flatMap((page) => page.data) ?? []);
+    const fetchedDoctors = mapDoctorRows(doctorsQuery.data?.pages.flatMap((page) => page.data) ?? []);
     const normalizedSearch = deferredSearchQuery.toLowerCase();
     const matchesSearch = (doctor: Doctor) =>
       [doctor.name, doctor.specialty, doctor.hospital, doctor.address].some(
@@ -197,7 +176,7 @@ export default function UnplannedCalls() {
       specialty: newDoctorForm.profession.trim(),
       hospital: newDoctorForm.hospital.trim(),
       address: newDoctorForm.address.trim(),
-      lastVisit: 'No visit recorded',
+      lastVisit: DASH,
       status: 'completed',
       isNewDoctor: true,
     };

@@ -17,13 +17,6 @@ function normalizeDuration(seconds: number) {
   return Math.max(1, Math.floor(seconds));
 }
 
-function formatTime(seconds: number) {
-  const safeSeconds = Math.max(0, Math.floor(seconds));
-  const m = Math.floor(safeSeconds / 60).toString().padStart(2, '0');
-  const s = (safeSeconds % 60).toString().padStart(2, '0');
-  return `${m}:${s}`;
-}
-
 function addSlideTime(seconds: number[], index: number, duration: number) {
   if (duration <= 0) return seconds;
 
@@ -50,7 +43,6 @@ export function SlideViewer({
     () => slides.map((slide) => normalizeDuration(slide.durationSeconds)),
     [slides]
   );
-  const currentDuration = durations[current] ?? 1;
   const currentSlide = slides[current];
   const slidesKey = useMemo(() => slides.map((slide) => slide.id).join('|'), [slides]);
 
@@ -73,8 +65,6 @@ export function SlideViewer({
     () => slideTimes.map((seconds, index) => Math.min(seconds, durations[index] ?? 1)),
     [durations, slideTimes]
   );
-  const completedSeconds = Math.min(progressSeconds[current] ?? 0, currentDuration);
-  const currentSlideSpentSeconds = slideTimes[current] ?? 0;
   const completedSlides = useMemo(
     () =>
       progressSeconds.filter((seconds, index) => seconds >= (durations[index] ?? 1)).length,
@@ -184,15 +174,9 @@ export function SlideViewer({
         <View style={styles.centerRail}>
           {/* Pause/Resume button hidden */}
 
+          {/* Spent-time value + progress bar hidden — show only the slide count. */}
           <View style={styles.slideTimer}>
-            <View style={styles.slideTimerHeader}>
-              <Text style={styles.slideTimerLabel}>Slide {current + 1}/{slides.length}</Text>
-              <Text style={styles.slideTimerValue}>{formatTime(currentSlideSpentSeconds)} spent</Text>
-            </View>
-            <View style={styles.slideTimerTrack}>
-              <View style={[styles.slideTimerFill, { flex: completedSeconds }]} />
-              <View style={{ flex: Math.max(0, currentDuration - completedSeconds) }} />
-            </View>
+            <Text style={styles.slideTimerLabel}>Slide {current + 1}/{slides.length}</Text>
           </View>
 
           <View style={styles.dots}>
@@ -283,39 +267,17 @@ const styles = StyleSheet.create({
     textShadowRadius: 4,
   },
   slideTimer: {
-    width: 182,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
     backgroundColor: 'rgba(15,23,42,0.42)',
-    gap: 6,
+    alignItems: 'center',
     marginBottom: 2,
   },
-  slideTimerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 10,
-  },
   slideTimerLabel: {
-    color: 'rgba(255,255,255,0.72)',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  slideTimerValue: {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '800',
-  },
-  slideTimerTrack: {
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    flexDirection: 'row',
-    overflow: 'hidden',
-  },
-  slideTimerFill: {
-    backgroundColor: '#FFFFFF',
   },
   pauseButton: {
     flexDirection: 'row',

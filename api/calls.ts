@@ -7,8 +7,12 @@ import axios from '@/config/axios';
  * when unknown. jsonb columns accept arrays/objects (serialized server-side).
  */
 export interface CallTrackingInput {
+  // Client-generated id linking this call's 'started' insert to its 'completed'
+  // update (the backend upserts on it). Generated at call start.
+  client_call_id: string;
   tsoid: string;
-  doctorid: string;
+  // Optional: a walking-call 'started' row has no doctor yet (chosen at End).
+  doctorid?: string;
   doctor_name?: string;
   doctor_specialty?: string;
   pmdc?: string;

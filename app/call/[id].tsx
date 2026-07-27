@@ -11,6 +11,7 @@ export default function CallScreenRoute() {
     specialtyId,
     teamId,
     institution,
+    groupDoctorIds,
     latitude,
     longitude,
     arrivedTime,
@@ -23,6 +24,7 @@ export default function CallScreenRoute() {
     specialtyId?: string;
     teamId?: string;
     institution?: string;
+    groupDoctorIds?: string;
     latitude?: string;
     longitude?: string;
     arrivedTime?: string;
@@ -48,6 +50,7 @@ export default function CallScreenRoute() {
       specialtyId={normalizedSpecialtyId}
       teamId={normalizedTeamId}
       institutionType={normalizedInstitution}
+      groupDoctorIds={getParam(groupDoctorIds)}
       arrivedLatitude={Number.isFinite(normalizedLatitude) ? normalizedLatitude : undefined}
       arrivedLongitude={Number.isFinite(normalizedLongitude) ? normalizedLongitude : undefined}
       arrivedTime={getParam(arrivedTime)}

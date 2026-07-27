@@ -23,31 +23,29 @@ function DetailField({ iconName, label, value }: DetailFieldProps) {
 interface ProfessionalDetailsCardProps {
   hospital: string;
   address: string;
+  city: string;
   lastVisit: string;
-  doctorRating: string;
+  doctorClass: string;
   pmdcNumber: string;
-  scheduledTime?: string;
 }
 
 export function ProfessionalDetailsCard({
   hospital,
   address,
+  city,
   lastVisit,
-  doctorRating,
+  doctorClass,
   pmdcNumber,
-  scheduledTime,
 }: ProfessionalDetailsCardProps) {
   return (
     <View style={styles.card}>
       <Text style={styles.title}>Professional Details</Text>
       <View style={styles.grid}>
-        <DetailField iconName="location-outline" label="HOSPITAL" value={hospital} />
+        <DetailField iconName="business-outline" label="HOSPITAL" value={hospital} />
         <DetailField iconName="location-outline" label="ADDRESS" value={address} />
-        {scheduledTime ? (
-          <DetailField iconName="alarm-outline" label="CALL TIME" value={scheduledTime} />
-        ) : null}
+        <DetailField iconName="map-outline" label="CITY" value={city} />
         <DetailField iconName="time-outline" label="LAST VISIT" value={lastVisit} />
-        <DetailField iconName="ribbon-outline" label="DOCTOR RATING" value={doctorRating} />
+        <DetailField iconName="ribbon-outline" label="DOCTOR CLASS" value={doctorClass} />
         <DetailField iconName="card-outline" label="PMDC NUMBER" value={pmdcNumber} />
       </View>
     </View>

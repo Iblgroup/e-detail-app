@@ -8,7 +8,8 @@ import { ArrivedButton } from './ArrivedButton';
 import { CallCompletedCard } from './CallCompletedCard';
 import { CancelCallButton } from './CancelCallButton';
 import { DoctorDetailHeader } from './DoctorDetailHeader';
-import { PlannedCallItem, PlannedCallsCard } from './PlannedCallsCard';
+// PlannedCallsCard hidden for now; the item type is still used by DoctorDetailData.
+import { PlannedCallItem } from './PlannedCallsCard';
 import { ProfessionalDetailsCard } from './ProfessionalDetailsCard';
 import { HistoryItem } from './RecentHistoryCard';
 import { StartCallButton } from './StartCallButton';
@@ -18,10 +19,17 @@ export interface DoctorDetailData {
   name: string;
   specialty: string;
   specialtyId?: number;
+  /** Hospital — no source column in `doctors` yet */
   hospital: string;
+  /** doctors.doc_clinic_address */
   address: string;
+  /** doctors.city */
+  city: string;
+  /** Rep's last recorded call for this doctor (call_tracking), or a dash. */
   lastVisit: string;
-  doctorRating: string;
+  /** doctors.class — A1 / A2 / A3 / A4 ... */
+  doctorClass: string;
+  /** doctors.pmdc */
   pmdcNumber: string;
   scheduledTime?: string;
   teamId?: number;
@@ -42,19 +50,6 @@ export default function DoctorDetail({
 }: DoctorDetailProps) {
   const { arrived, arrival, toggleArrived, reset } = useArrival();
   // const [tokenAdded, setTokenAdded] = useState(false); // Add Card (Token) hidden
-  const plannedCallsSource = doctor.plannedCalls ?? [
-    {
-      id: `${doctor.id}-planned-call`,
-      title: 'E-Detailing Call',
-      scheduledTime: doctor.scheduledTime ?? 'Time TBD',
-      location: doctor.hospital,
-      status: 'pending' as const,
-    },
-  ];
-  const plannedCalls = plannedCallsSource.map((item, index) => ({
-    ...item,
-    status: completed && index === 0 ? 'completed' as const : item.status ?? 'pending' as const,
-  }));
 
   return (
     <View style={styles.screen}>
@@ -68,13 +63,13 @@ export default function DoctorDetail({
         <ProfessionalDetailsCard
           hospital={doctor.hospital}
           address={doctor.address}
+          city={doctor.city}
           lastVisit={doctor.lastVisit}
-          doctorRating={doctor.doctorRating}
+          doctorClass={doctor.doctorClass}
           pmdcNumber={doctor.pmdcNumber}
-          scheduledTime={doctor.scheduledTime}
         />
 
-        <PlannedCallsCard items={plannedCalls} />
+        {/* Planned Calls card hidden for now (placeholder schedule data). */}
 
         {completed ? (
           <CallCompletedCard />

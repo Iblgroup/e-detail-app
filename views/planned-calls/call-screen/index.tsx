@@ -1,5 +1,6 @@
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import * as Crypto from 'expo-crypto';
 import { router } from 'expo-router';
 import { CallHeader } from './CallHeader';
 import { SlideViewer } from './SlideViewer';
@@ -10,7 +11,7 @@ import { CallType } from '../callTypes';
 import { queueReturnToNewDoctor } from '@/views/unplanned-calls/returnToNewDoctorStore';
 import { DoctorCallSlide, useForcingSlides } from '@/api/content';
 import { useTeamSkus } from '@/api/sku';
-import { useInfiniteDoctors } from '@/api/doctor';
+import { useInfiniteDoctors, type DoctorDataRow } from '@/api/doctor';
 import { useAuth } from '@/providers/AuthProvider';
 import { enqueueCall } from '@/lib/offline/outbox';
 import { nearestClinicVicinity } from '@/lib/location/distance';
@@ -57,6 +58,9 @@ interface CallScreenProps {
   // Institution call type ('walking' | 'group'); when set, the summary requires
   // picking a doctor from the team.
   institutionType?: string;
+  // Group call: the doctor ids picked up-front in the panel (comma-separated).
+  // Carried through so a group call records one call_tracking row per attendee.
+  groupDoctorIds?: string;
   // Location captured when the rep marked "Arrived" (offline-capable GPS).
   arrivedLatitude?: number;
   arrivedLongitude?: number;
@@ -94,6 +98,7 @@ export default function CallScreen({
   specialtyId,
   teamId,
   institutionType,
+  groupDoctorIds,
   arrivedLatitude,
   arrivedLongitude,
   arrivedTime,
@@ -101,6 +106,13 @@ export default function CallScreen({
 }: CallScreenProps) {
   const { user } = useAuth();
   const isInstitutionCall = Boolean(institutionType);
+  // Group call: doctors were picked up-front in the panel, so the summary hides
+  // its doctor picker and we record one row per pre-selected attendee.
+  const isGroupCall = institutionType === 'group';
+  const groupDoctorIdList = useMemo(
+    () => (groupDoctorIds ? groupDoctorIds.split(',').filter(Boolean) : []),
+    [groupDoctorIds],
+  );
   // Forcing is resolved by the chosen specialty for institution calls, and by the
   // doctor (their specialties) for doctor calls.
   const forcingDoctorId = isInstitutionCall ? undefined : doctorId;
@@ -167,26 +179,138 @@ export default function CallScreen({
     setSlidesViewed((previous) => Math.max(previous, count));
   }, []);
 
-  // Build a full call_tracking payload and hand it to the offline outbox.
+  // A stable client-generated id per call (keyed so the 'started' insert and the
+  // 'completed' update target the same call_tracking row via upsert). Group calls
+  // key by doctorid (one call each); walking keys by a fixed 'walking' slot (its
+  // doctor is chosen only at End); other calls key by their doctorid.
+  const clientCallIdsRef = useRef<Map<string, string>>(new Map());
+  const getClientCallId = useCallback((key: string) => {
+    const existing = clientCallIdsRef.current.get(key);
+    if (existing) return existing;
+    const id = Crypto.randomUUID();
+    clientCallIdsRef.current.set(key, id);
+    return id;
+  }, []);
+
+  // Doctor + arrival fields shared by the start and end payloads. `row` may be
+  // absent (team pool not loaded yet, or a walking start with no doctor).
+  const buildIdentityFields = useCallback(
+    (row?: DoctorDataRow, effectiveDoctorName?: string) => {
+      // Flag whether the rep's arrival GPS was within 50m of the doctor's clinic
+      // (checks both day + evening locations). null when GPS or clinic coords are
+      // missing. Out-of-vicinity calls are recorded and flagged, never blocked.
+      const vicinity = nearestClinicVicinity(
+        { latitude: arrivedLatitude, longitude: arrivedLongitude },
+        {
+          dayLat: row?.DocLat,
+          dayLng: row?.DocLng,
+          eveLat: row?.DocEveLat,
+          eveLng: row?.DocEveLng,
+        },
+      );
+      return {
+        doctor_name: row?.DOCTORNAME || effectiveDoctorName || undefined,
+        doctor_specialty: row?.SpecialtyByCommercial || row?.SpecialtyByIkon || undefined,
+        pmdc: row?.PMDC || undefined,
+        // The PREVIOUS visit as of this call (this call becomes the next one's).
+        doctor_last_visit: row?.LastVisit || undefined,
+        // Arrival GPS captured on the "Arrived" tap (works offline).
+        latitude: arrivedLatitude,
+        longitude: arrivedLongitude,
+        // arrived_location = the doctor's clinic address; fall back to the
+        // reverse-geocoded address of where the rep actually was.
+        arrived_location: row?.ClinicAddress || arrivedLocation || undefined,
+        arrived_time: arrivedTime || undefined,
+        arrived_within_vicinity: vicinity?.withinVicinity,
+        arrived_distance_meters: vicinity?.distanceMeters,
+      };
+    },
+    [arrivedLatitude, arrivedLongitude, arrivedLocation, arrivedTime],
+  );
+
+  // Phase 1: record a 'started' row as soon as the call opens, with whatever is
+  // known at start, so a call that is begun but never ended still leaves a trace.
+  // The 'completed' update (recordCallToOutbox) reuses the same client_call_id.
+  const recordStartToOutbox = useCallback(async () => {
+    const tsoid = user?.mieId ? String(user.mieId) : '';
+    if (!tsoid) return;
+
+    // Start targets: group → one per pre-selected doctor; walking → a single
+    // doctor-less slot; other calls → the incoming doctor id.
+    const starts: { key: string; row?: DoctorDataRow; id?: string }[] = isGroupCall
+      ? groupDoctorIdList.map((id) => ({ key: id, row: doctorById.get(id), id }))
+      : isInstitutionCall
+        ? [{ key: 'walking' }]
+        : [{ key: String(doctorId ?? ''), row: doctorById.get(String(doctorId ?? '')), id: String(doctorId ?? '') }];
+
+    for (const target of starts) {
+      // Doctor/group starts need a real (numeric) doctorid; a walking start has
+      // no doctor yet (id undefined) and is allowed through.
+      if (target.id != null && !/^\d+$/.test(target.id)) continue;
+
+      const payload: CallTrackingInput = {
+        client_call_id: getClientCallId(target.key),
+        tsoid,
+        doctorid: target.id || undefined,
+        ...buildIdentityFields(target.row),
+        call_start_time: callStartRef.current,
+        call_type: callType,
+        institution_call_type: institutionType || undefined,
+        call_outcome: 'started',
+        created_by: Number(user?.userId) || undefined,
+      };
+
+      try {
+        await enqueueCall(payload);
+      } catch (error) {
+        console.warn('[call] failed to queue call start for sync', error);
+      }
+    }
+  }, [
+    user?.mieId,
+    user?.userId,
+    isInstitutionCall,
+    isGroupCall,
+    groupDoctorIdList,
+    doctorById,
+    doctorId,
+    getClientCallId,
+    buildIdentityFields,
+    callType,
+    institutionType,
+  ]);
+
+  // Fire the start record once, when the call screen opens.
+  const startRecordedRef = useRef(false);
+  useEffect(() => {
+    if (startRecordedRef.current) return;
+    startRecordedRef.current = true;
+    void recordStartToOutbox();
+  }, [recordStartToOutbox]);
+
+  // Phase 2: build the full call_tracking payload on End Call and hand it to the
+  // offline outbox — this UPDATES the 'started' row (same client_call_id).
   const recordCallToOutbox = useCallback(
     async (summary: CallSummaryData, effectiveDoctorName?: string) => {
       const tsoid = user?.mieId ? String(user.mieId) : '';
       if (!tsoid) return; // can't attribute the call without a rep (tso) id
 
-      // Resolve the real doctorid (FK to doctors). Institution calls resolve by
-      // the chosen name; others by the incoming id.
-      const selectedRow =
-        isInstitutionCall && effectiveDoctorName
-          ? doctorByName.get(effectiveDoctorName.trim().toLowerCase())
-          : doctorById.get(String(doctorId ?? ''));
-      const resolvedDoctorId = selectedRow
-        ? String(selectedRow.DOCTORID ?? '')
-        : String(doctorId ?? '');
-
-      // call_tracking.doctorid is a FK to doctors — only real (numeric) ids can
-      // be recorded. Brand-new unplanned doctors (synthetic ids) are skipped
-      // until they exist in the doctors table.
-      if (!/^\d+$/.test(resolvedDoctorId)) return;
+      // Resolve the target doctor row(s), keyed to match the start record. A
+      // group call updates one row per pre-selected attendee; walking resolves
+      // by the name chosen in the summary (filling the doctor-less start row);
+      // other calls resolve by the incoming id.
+      const targets = isGroupCall
+        ? groupDoctorIdList.map((id) => ({ key: id, row: doctorById.get(id), id }))
+        : isInstitutionCall && effectiveDoctorName
+          ? [(() => {
+              const row = doctorByName.get(effectiveDoctorName.trim().toLowerCase());
+              return { key: 'walking', row, id: row ? String(row.DOCTORID ?? '') : String(doctorId ?? '') };
+            })()]
+          : [(() => {
+              const key = String(doctorId ?? '');
+              const row = doctorById.get(key);
+              return { key, row, id: row ? String(row.DOCTORID ?? '') : key };
+            })()];
 
       const slideLabels = slides.map(getAnalyticsSlideLabel);
       const eachSlideTime: Record<string, number> = {};
@@ -200,19 +324,6 @@ export default function CallScreen({
         .filter((value) => value && value.toLowerCase() !== 'no');
       const sampleProvided = Boolean(
         summary.samplesProvided && summary.samplesProvided !== 'None',
-      );
-
-      // Flag whether the rep's arrival GPS was within 50m of the doctor's clinic
-      // (checks both day + evening locations). null when GPS or clinic coords are
-      // missing. Out-of-vicinity calls are recorded and flagged, never blocked.
-      const vicinity = nearestClinicVicinity(
-        { latitude: arrivedLatitude, longitude: arrivedLongitude },
-        {
-          dayLat: selectedRow?.DocLat,
-          dayLng: selectedRow?.DocLng,
-          eveLat: selectedRow?.DocEveLat,
-          eveLng: selectedRow?.DocEveLng,
-        },
       );
 
       // Brands + SKUs shown in this call, linked: each SKU carries the id of its
@@ -240,71 +351,69 @@ export default function CallScreen({
         skuObjects.push({ brand_id: brandIdByName.get(brandName) ?? null, name: skuName });
       }
 
-      const payload: CallTrackingInput = {
-        tsoid,
-        doctorid: resolvedDoctorId,
-        doctor_name: effectiveDoctorName || selectedRow?.DOCTORNAME || undefined,
-        doctor_specialty:
-          selectedRow?.SpecialtyByCommercial ||
-          selectedRow?.SpecialtyByIkon ||
-          undefined,
-        // Arrival GPS captured on the "Arrived" tap (works offline).
-        latitude: arrivedLatitude,
-        longitude: arrivedLongitude,
-        // arrived_location = the doctor's clinic address; fall back to the
-        // reverse-geocoded address of where the rep actually was.
-        arrived_location: selectedRow?.ClinicAddress || arrivedLocation || undefined,
-        arrived_time: arrivedTime || undefined,
-        arrived_within_vicinity: vicinity?.withinVicinity,
-        arrived_distance_meters: vicinity?.distanceMeters,
-        call_start_time: callStartRef.current,
-        call_end_time: new Date().toISOString(),
-        total_call_time_seconds: elapsedSeconds,
-        total_slides_count: slides.length,
-        shown_slides_count: slidesViewed,
-        slides_total_time_seconds: slidesTotalSeconds,
-        each_slide_time: eachSlideTime,
-        // brand + sku as linked objects (jsonb columns).
-        brand: brandObjects.length ? brandObjects : undefined,
-        sku: skuObjects.length ? skuObjects : undefined,
-        join_call: jointCall,
-        sample_provided: sampleProvided,
-        samples_json: sampleProvided
-          ? { samples: [summary.samplesProvided] }
-          : { samples: [] },
-        feedback: summary.feedback || undefined,
-        feedback_comment: summary.feedbackComment || undefined,
-        call_type: callType,
-        institution_call_type: institutionType || undefined,
-        // Explicit completion marker — this payload is only built on End Call →
-        // submit, so the call is finished. Powers the Completed tab.
-        call_outcome: 'completed',
-        created_by: Number(user?.userId) || undefined,
-      };
+      // One call_tracking row per target doctor (group calls fan out; other call
+      // types have a single target). Each UPDATES its 'started' row via the
+      // shared client_call_id (keyed the same way as recordStartToOutbox).
+      for (const { key, row: selectedRow, id: resolvedDoctorId } of targets) {
+        // call_tracking.doctorid is a FK to doctors — only real (numeric) ids can
+        // be recorded. Synthetic ids (new unplanned doctors, institution-* route
+        // ids) and unresolved group doctors are skipped.
+        if (!/^\d+$/.test(resolvedDoctorId)) continue;
 
-      try {
-        await enqueueCall(payload);
-      } catch (error) {
-        console.warn('[call] failed to queue call for sync', error);
+        const payload: CallTrackingInput = {
+          client_call_id: getClientCallId(key),
+          tsoid,
+          doctorid: resolvedDoctorId,
+          ...buildIdentityFields(selectedRow, effectiveDoctorName),
+          call_start_time: callStartRef.current,
+          call_end_time: new Date().toISOString(),
+          total_call_time_seconds: elapsedSeconds,
+          total_slides_count: slides.length,
+          shown_slides_count: slidesViewed,
+          slides_total_time_seconds: slidesTotalSeconds,
+          each_slide_time: eachSlideTime,
+          // brand + sku as linked objects (jsonb columns).
+          brand: brandObjects.length ? brandObjects : undefined,
+          sku: skuObjects.length ? skuObjects : undefined,
+          join_call: jointCall,
+          sample_provided: sampleProvided,
+          samples_json: sampleProvided
+            ? { samples: [summary.samplesProvided] }
+            : { samples: [] },
+          feedback: summary.feedback || undefined,
+          feedback_comment: summary.feedbackComment || undefined,
+          call_type: callType,
+          institution_call_type: institutionType || undefined,
+          // Explicit completion marker — this payload is only built on End Call →
+          // submit, so the call is finished. Powers the Completed tab.
+          call_outcome: 'completed',
+          created_by: Number(user?.userId) || undefined,
+        };
+
+        try {
+          await enqueueCall(payload);
+        } catch (error) {
+          console.warn('[call] failed to queue call for sync', error);
+        }
       }
     },
     [
       user?.mieId,
       user?.userId,
       isInstitutionCall,
+      isGroupCall,
+      groupDoctorIdList,
       doctorByName,
       doctorById,
       doctorId,
+      getClientCallId,
+      buildIdentityFields,
       slides,
       slideTimes,
       elapsedSeconds,
       slidesViewed,
       callType,
       institutionType,
-      arrivedLatitude,
-      arrivedLongitude,
-      arrivedTime,
-      arrivedLocation,
     ],
   );
 
@@ -399,7 +508,7 @@ export default function CallScreen({
         slidesViewed={slidesViewed}
         totalSlides={slides.length}
         sampleOptions={sampleOptions}
-        requireDoctor={isInstitutionCall}
+        requireDoctor={isInstitutionCall && !isGroupCall}
         doctorOptions={doctorOptions}
         onCancel={() => setIsSummaryVisible(false)}
         onSubmit={handleSubmitSummary}
