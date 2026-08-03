@@ -10,6 +10,7 @@ import {
 import {
   forcingContentKey,
   forcingImageUrls,
+  teamBrandsKey,
   type ForcingContentResponse,
 } from '@/api/content';
 import { getDailySync } from '@/api/sync';
@@ -74,6 +75,9 @@ export async function runSync({
 
   // Seed the team's SKUs for the call summary "Samples Provided" picker.
   queryClient.setQueryData(teamSkusKey(teamId), payload.teamSkus ?? []);
+
+  // Seed the team's brands + SKUs for the Content Viewing screen.
+  queryClient.setQueryData(teamBrandsKey(teamId), payload.teamBrands ?? []);
 
   // 2) Seed each doctor's forcing query + collect the image URLs (as the slides
   //    will request them, so the cached file keys match). Forcing is keyed by

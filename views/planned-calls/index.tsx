@@ -5,12 +5,13 @@ import { AppSearchInput } from '@/components/ui/AppSearchInput';
 import { ScreenLayout } from '@/components/ui/ScreenLayout';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/providers/AuthProvider';
-import { useCallMode } from '@/lib/settings/callModeStore';
 import { useInfinitePlannedDoctors } from '@/api/doctor';
 import { savePlannedForMie, seedPlannedFromBulk } from '@/lib/offline/plannedBulk';
 import { useCompletedDoctorIds } from '@/api/calls';
 import { getPendingCallDoctorIds } from '@/lib/offline/outbox';
 import { ScheduleSectionHeader } from './ScheduleSectionHeader';
+import { CallKindSelector } from './CallKindSelector';
+import type { CallKind } from './callTypes';
 import { DoctorCard } from './DoctorCard';
 import { mapDoctorRows } from './mapDoctor';
 import { InstitutionCallPanel } from './InstitutionCallPanel';
@@ -21,7 +22,10 @@ const LIST_PAGE = 30;
 
 export default function PlannedCalls() {
   const { user } = useAuth();
-  const { callMode } = useCallMode();
+  // The call kind is chosen per visit and defaults to the everyday chamber
+  // (single-doctor) flow. All three kinds are available regardless of the
+  // territory/institution mode, which lives in Settings only.
+  const [callKind, setCallKind] = useState<CallKind>('chamber');
   const [completedCallIds, setCompletedCallIds] = useState(() => getCompletedCallIds('planned'));
   // Doctor ids of calls queued offline (not yet synced to call_tracking).
   const [outboxDoctorIds, setOutboxDoctorIds] = useState<string[]>([]);
@@ -148,10 +152,14 @@ export default function PlannedCalls() {
 
   const renderFooter = () => <View style={styles.footerSpacer} />;
 
-  // Institution mode replaces the doctor listing with group / walking calls.
-  if (callMode === 'institution') {
+  // Group calls replace the doctor listing with their own panel. Chamber and
+  // parking both run the doctor-by-doctor flow below — identical apart from the
+  // kind recorded against the call. The Call Type selector sits above either
+  // view so the rep can switch without leaving the screen.
+  if (callKind === 'group') {
     return (
       <ScreenLayout title="Call Reporting" notificationCount={1}>
+        <CallKindSelector value={callKind} onChange={setCallKind} />
         <InstitutionCallPanel />
       </ScreenLayout>
     );
@@ -159,10 +167,17 @@ export default function PlannedCalls() {
 
   return (
     <ScreenLayout title="Call Reporting" notificationCount={1} scrollable={false}>
+      <CallKindSelector
+        value={callKind}
+        onChange={setCallKind}
+        style={styles.callKindSelector}
+      />
       <FlatList
         data={visibleDoctors}
         keyExtractor={(doctor) => doctor.id}
-        renderItem={({ item }) => <DoctorCard doctor={item} callType="planned" onPress={() => {}} />}
+        renderItem={({ item }) => (
+          <DoctorCard doctor={item} callType="planned" callKind={callKind} onPress={() => {}} />
+        )}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         onEndReached={handleLoadMore}
@@ -282,6 +297,10 @@ export default function PlannedCalls() {
 }
 
 const styles = StyleSheet.create({
+  callKindSelector: {
+    marginHorizontal: 16,
+    marginTop: 14,
+  },
   content: {
     padding: 16,
     paddingBottom: 32,

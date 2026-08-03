@@ -1,7 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
 import DoctorDetail, { DoctorDetailData } from '@/views/planned-calls/doctor-detail';
 import { isCallCompleted } from '@/views/planned-calls/callCompletionStore';
-import { CallType } from '@/views/planned-calls/callTypes';
+import { CallType, type CallKind } from '@/views/planned-calls/callTypes';
 import { DASH } from '@/views/planned-calls/mapDoctor';
 
 /**
@@ -25,6 +25,8 @@ export default function DoctorDetailScreen() {
     pmdc?: string;
     scheduledTime?: string;
     teamId?: string;
+    viewOnly?: string;
+    callKind?: CallKind;
   }>();
 
   const getParam = (value: string | string[] | undefined) =>
@@ -60,6 +62,10 @@ export default function DoctorDetailScreen() {
       doctor={doctor}
       callType={normalizedCallType}
       completed={completed === '1' || isCallCompleted(doctorId, normalizedCallType)}
+      // Chamber or parking — carried through so the call is marked correctly.
+      callKind={getParam(params.callKind) as CallKind | undefined}
+      // Opened from the Doctor List (a reference view) — no call actions.
+      viewOnly={getParam(params.viewOnly) === '1'}
     />
   );
 }

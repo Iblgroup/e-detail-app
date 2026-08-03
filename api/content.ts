@@ -57,6 +57,45 @@ export const useSpecialties = () => {
   });
 };
 
+export interface TeamBrandSku {
+  skuId: number | null;
+  skuName: string;
+  forcing: number | null;
+  slideCount: number;
+}
+
+export interface TeamBrand {
+  brandId: string | null;
+  brandName: string;
+  forcing: number | null;
+  /** Slides across the brand, including its SKUs. */
+  slideCount: number;
+  skus: TeamBrandSku[];
+}
+
+export const teamBrandsKey = (teamId?: number) =>
+  ['team-brands', teamId ?? 'no-team'] as const;
+
+export const getTeamBrands = async (teamId: number): Promise<TeamBrand[]> => {
+  const res = (await axios.get(ApiEndpoints.teamBrands, {
+    params: { teamId },
+  })) as unknown as { success: boolean; data: TeamBrand[] };
+  return res.data ?? [];
+};
+
+/**
+ * The brands + SKUs assigned to the rep's team — what they detail on. Cached (and
+ * offline-persisted) so the Content Viewing screen works without a network.
+ */
+export const useTeamBrands = (teamId?: number) => {
+  return useQuery({
+    queryKey: teamBrandsKey(teamId),
+    queryFn: () => getTeamBrands(teamId as number),
+    enabled: Boolean(teamId),
+    staleTime: 30 * 60 * 1000,
+  });
+};
+
 function parseDurationSeconds(duration: string | null | undefined) {
   const match = String(duration ?? '').match(/(\d+)/);
   const seconds = match ? Number(match[1]) : 10;

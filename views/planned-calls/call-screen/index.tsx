@@ -8,7 +8,7 @@ import { Slide } from './SlideCard';
 import { CallSummaryData, CallSummaryModal } from './CallSummaryModal';
 import { markCallCompleted } from '../callCompletionStore';
 import { getLastCallDuration, setLastCallDuration } from '../lastCallStore';
-import { CallType } from '../callTypes';
+import { CallType, type CallKind } from '../callTypes';
 import { queueReturnToNewDoctor } from '@/views/unplanned-calls/returnToNewDoctorStore';
 import { DoctorCallSlide, useForcingSlides } from '@/api/content';
 import { useTeamSkus } from '@/api/sku';
@@ -56,10 +56,13 @@ interface CallScreenProps {
   returnToNewDoctor?: boolean;
   specialtyId?: number;
   teamId?: number;
-  // Institution call type ('walking' | 'group'); when set, the summary requires
-  // picking the doctor(s) from the team — a single picker for walking, a
-  // multi-select for group.
+  // Institution call type ('group'); when set, the summary requires picking the
+  // doctor(s) from the team, and forcing is resolved by specialty rather than by
+  // the doctor.
   institutionType?: string;
+  // How this call is conducted ('chamber' | 'parking'). Recorded on the call but
+  // does NOT change the flow — chamber and parking behave identically.
+  callKind?: CallKind;
   // Location captured when the rep marked "Arrived" (offline-capable GPS).
   arrivedLatitude?: number;
   arrivedLongitude?: number;
@@ -97,6 +100,7 @@ export default function CallScreen({
   specialtyId,
   teamId,
   institutionType,
+  callKind,
   arrivedLatitude,
   arrivedLongitude,
   arrivedTime,
@@ -104,6 +108,9 @@ export default function CallScreen({
 }: CallScreenProps) {
   const { user } = useAuth();
   const isInstitutionCall = Boolean(institutionType);
+  // What gets stored in call_tracking.institution_call_type: 'group' for an
+  // institution call, otherwise the chamber/parking mark from the list.
+  const recordedCallKind = institutionType || callKind;
   // Group call: multiple doctors, picked at the END (in the summary) like walking
   // calls; recorded as one call_tracking row per attendee.
   const isGroupCall = institutionType === 'group';
@@ -263,7 +270,7 @@ export default function CallScreen({
         ...buildIdentityFields(target.row),
         call_start_time: callStartRef.current,
         call_type: callType,
-        institution_call_type: institutionType || undefined,
+        institution_call_type: recordedCallKind || undefined,
         call_outcome: 'started',
         created_by: Number(user?.userId) || undefined,
       };
@@ -283,7 +290,7 @@ export default function CallScreen({
     getClientCallId,
     buildIdentityFields,
     callType,
-    institutionType,
+    recordedCallKind,
   ]);
 
   // Fire the start record once, when the call screen opens.
@@ -396,7 +403,7 @@ export default function CallScreen({
           feedback: summary.feedback || undefined,
           feedback_comment: summary.feedbackComment || undefined,
           call_type: callType,
-          institution_call_type: institutionType || undefined,
+          institution_call_type: recordedCallKind || undefined,
           // Explicit completion marker — this payload is only built on End Call →
           // submit, so the call is finished. Powers the Completed tab.
           call_outcome: 'completed',
@@ -425,7 +432,7 @@ export default function CallScreen({
       elapsedSeconds,
       slidesViewed,
       callType,
-      institutionType,
+      recordedCallKind,
     ],
   );
 

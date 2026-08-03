@@ -1,7 +1,7 @@
 import axios from '@/config/axios';
 import { ApiEndpoints } from '@/api/endpoints';
 import type { DoctorDataRow } from '@/api/doctor';
-import type { ForcingContentRow } from '@/api/content';
+import type { ForcingContentRow, TeamBrand } from '@/api/content';
 
 export interface DailySyncResponse {
   success: boolean;
@@ -13,6 +13,8 @@ export interface DailySyncResponse {
   unplannedDoctors: DoctorDataRow[];
   // The team's SKUs, for the "Samples Provided" picker.
   teamSkus: string[];
+  // The team's brands + their SKUs, for the Content Viewing screen.
+  teamBrands: TeamBrand[];
   // Forcing rows keyed by doctorId (matched server-side to the doctor's specialties).
   forcing: Record<string, ForcingContentRow[]>;
   imageUrls: string[];

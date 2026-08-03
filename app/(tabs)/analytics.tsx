@@ -3,20 +3,14 @@ import { AppCalendarSheet } from '@/components/ui/AppCalendarSheet';
 import { AppButton } from '@/components/ui/AppButton';
 import { AppChartCard } from '@/components/ui/AppChartCard';
 import { AppLineChart, LineChartDataPoint } from '@/components/ui/AppLineChart';
-import { AppMetricCard } from '@/components/ui/AppMetricCard';
+import { SummaryMetricsGrid } from '@/components/ui/SummaryMetricsGrid';
 import { ScreenLayout } from '@/components/ui/ScreenLayout';
 import { Colors } from '@/constants/theme';
 import { exportAnalyticsPdf } from '@/lib/analytics/exportPdf';
+import { SUMMARY_METRICS } from '@/lib/analytics/summaryMetrics';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
-
-const metrics = [
-  { label: 'Total Calls', value: '284', change: '+12', tone: 'positive' },
-  { label: 'Avg Duration', value: '14m', change: '-2%', tone: 'negative' },
-  { label: 'Goal Completion', value: '92%', change: '+5%', tone: 'positive' },
-  { label: 'Doctor Rating', value: '4.8', change: '+0.2', tone: 'positive' },
-] as const;
 
 const callVolumeData: LineChartDataPoint[] = [
   { label: 'Jan', value: 45 },
@@ -76,7 +70,7 @@ export default function AnalyticsScreen() {
     try {
       await exportAnalyticsPdf({
         dateLabel: formatRangeLabel(startDate, endDate),
-        metrics,
+        metrics: SUMMARY_METRICS,
         rfi: rfiData,
         specialty: specialtyData,
       });
@@ -141,19 +135,7 @@ export default function AnalyticsScreen() {
         </View>
       </View>
 
-      <View style={styles.metricsGrid}>
-        {metrics.map((metric) => (
-          <View key={metric.label} style={styles.metricCell}>
-            <AppMetricCard
-              label={metric.label}
-              value={metric.value}
-              pill={metric.change}
-              tone={metric.tone}
-              style={styles.metricCardFill}
-            />
-          </View>
-        ))}
-      </View>
+      <SummaryMetricsGrid />
 
       <View style={styles.rfiCard}>
         <View style={styles.rfiHeader}>
@@ -308,19 +290,6 @@ const styles = StyleSheet.create({
   exportButtonText: {
     fontSize: 14,
     fontWeight: '800',
-  },
-  metricsGrid: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  metricCell: {
-    flex: 1,
-    flexBasis: 0,
-    minWidth: 0,
-  },
-  // Fill the cell's stretched height so all four cards match the tallest.
-  metricCardFill: {
-    flex: 1,
   },
   chartsGrid: {
     gap: 16,

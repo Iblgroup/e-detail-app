@@ -2,7 +2,7 @@ import { Colors } from '@/constants/theme';
 import { useArrival } from '@/lib/location/useArrival';
 import { router } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { CallType } from '../callTypes';
+import { CallType, type CallKind } from '../callTypes';
 // import { AddTokenButton } from './AddTokenButton'; // hidden for now
 import { ArrivedButton } from './ArrivedButton';
 import { CallCompletedCard } from './CallCompletedCard';
@@ -13,6 +13,7 @@ import { PlannedCallItem } from './PlannedCallsCard';
 import { ProfessionalDetailsCard } from './ProfessionalDetailsCard';
 import { HistoryItem } from './RecentHistoryCard';
 import { StartCallButton } from './StartCallButton';
+import { ViewOnlyNotice } from './ViewOnlyNotice';
 
 export interface DoctorDetailData {
   id: string;
@@ -41,12 +42,21 @@ interface DoctorDetailProps {
   doctor: DoctorDetailData;
   completed?: boolean;
   callType?: CallType;
+  /** Chamber or parking — recorded against the call when it starts. */
+  callKind?: CallKind;
+  /**
+   * Reference mode — the record without the call actions. Set when the screen is
+   * opened from the Doctor List; calls are only started from Call Reporting.
+   */
+  viewOnly?: boolean;
 }
 
 export default function DoctorDetail({
   doctor,
   completed = false,
   callType = 'planned',
+  callKind,
+  viewOnly = false,
 }: DoctorDetailProps) {
   const { arrived, arrival, toggleArrived, reset } = useArrival();
   // const [tokenAdded, setTokenAdded] = useState(false); // Add Card (Token) hidden
@@ -71,7 +81,9 @@ export default function DoctorDetail({
 
         {/* Planned Calls card hidden for now (placeholder schedule data). */}
 
-        {completed ? (
+        {viewOnly ? (
+          <ViewOnlyNotice />
+        ) : completed ? (
           <CallCompletedCard />
         ) : (
           <View style={styles.buttonsRow}>
@@ -88,6 +100,7 @@ export default function DoctorDetail({
                     params: {
                       id: doctor.id,
                       callType,
+                      callKind,
                       doctorName: doctor.name,
                       specialtyId: doctor.specialtyId ? String(doctor.specialtyId) : undefined,
                       teamId: doctor.teamId ? String(doctor.teamId) : undefined,

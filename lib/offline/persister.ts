@@ -11,7 +11,9 @@ const WRITE_THROTTLE_MS = 1500;
 
 // Bump when the cached data shape changes, to invalidate stale caches.
 // Shared by the React provider and the headless background sync.
-export const CACHE_BUSTER = 'v1';
+// v2: doctor rows gained pmdc / class / last-visit (and dropped the GPS
+// "location" field), so any v1 cache must be discarded on upgrade.
+export const CACHE_BUSTER = 'v2';
 
 export function createFilePersister(): Persister {
   let pending: PersistedClient | null = null;

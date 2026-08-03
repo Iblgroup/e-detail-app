@@ -11,6 +11,8 @@ interface AppHeaderProps {
   notificationCount?: number;
   onNotification?: () => void;
   action?: React.ReactNode;
+  /** When set, a back chevron is shown to the left of the title. */
+  onBack?: () => void;
 }
 
 export function AppHeader({
@@ -20,6 +22,7 @@ export function AppHeader({
   notificationCount = 0,
   onNotification,
   action,
+  onBack,
 }: AppHeaderProps) {
   const { user } = useAuth();
   const formattedDate = new Date().toLocaleDateString('en-US', {
@@ -32,17 +35,29 @@ export function AppHeader({
   return (
     <View style={styles.container}>
       <View style={styles.left}>
-        <Text style={styles.greeting}>
-          {title ?? `Hello, ${userName ?? user?.name ?? 'John Doe'}`}
-        </Text>
-        {subtitle ? (
-          <Text style={styles.subtitle}>{subtitle}</Text>
-        ) : (
-          <View style={styles.dateRow}>
-            <Ionicons name="calendar-outline" size={20} color={Colors.primary} />
-            <Text style={styles.date}>{formattedDate}</Text>
-          </View>
-        )}
+        {onBack ? (
+          <Pressable
+            onPress={onBack}
+            hitSlop={8}
+            style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
+          >
+            <Ionicons name="chevron-back" size={20} color={Colors.primary} />
+          </Pressable>
+        ) : null}
+
+        <View style={styles.titleBlock}>
+          <Text style={styles.greeting}>
+            {title ?? `Hello, ${userName ?? user?.name ?? 'John Doe'}`}
+          </Text>
+          {subtitle ? (
+            <Text style={styles.subtitle}>{subtitle}</Text>
+          ) : (
+            <View style={styles.dateRow}>
+              <Ionicons name="calendar-outline" size={20} color={Colors.primary} />
+              <Text style={styles.date}>{formattedDate}</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       <View style={styles.right}>
@@ -74,7 +89,27 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   left: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  titleBlock: {
+    flex: 1,
     gap: 3,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pressed: {
+    opacity: 0.7,
   },
   greeting: {
     fontSize: 20,

@@ -1,5 +1,6 @@
 import { ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { AppHeader } from '@/components/ui/AppHeader';
 import { Colors } from '@/constants/theme';
 
@@ -13,6 +14,17 @@ interface ScreenLayoutProps {
   onNotification?: () => void;
   scrollable?: boolean;
   contentStyle?: ViewStyle;
+  /** Show a back chevron in the header (for screens opened from the dashboard). */
+  showBack?: boolean;
+}
+
+/** Back to the previous screen, or to the dashboard when opened without history. */
+function goBack() {
+  if (router.canGoBack()) {
+    router.back();
+    return;
+  }
+  router.replace('/');
 }
 
 export function ScreenLayout({
@@ -25,6 +37,7 @@ export function ScreenLayout({
   onNotification,
   scrollable = true,
   contentStyle,
+  showBack = false,
 }: ScreenLayoutProps) {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -35,6 +48,7 @@ export function ScreenLayout({
         notificationCount={notificationCount}
         onNotification={onNotification}
         action={headerAction}
+        onBack={showBack ? goBack : undefined}
       />
       {scrollable ? (
         <ScrollView

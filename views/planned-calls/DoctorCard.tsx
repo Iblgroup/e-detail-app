@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CompletedCallReport, getCompletedCallReport } from './callCompletionStore';
-import { CallType } from './callTypes';
+import { CallType, type CallKind } from './callTypes';
 
 export interface Doctor {
   id: string;
@@ -32,10 +32,17 @@ export interface Doctor {
 interface DoctorCardProps {
   doctor: Doctor;
   callType?: CallType;
+  /** Chamber or parking — recorded against the call this card leads to. */
+  callKind?: CallKind;
   onPress?: (doctor: Doctor) => boolean | void;
 }
 
-export function DoctorCard({ doctor, callType = 'planned', onPress }: DoctorCardProps) {
+export function DoctorCard({
+  doctor,
+  callType = 'planned',
+  callKind,
+  onPress,
+}: DoctorCardProps) {
   const isCompleted = doctor.status === 'completed';
 
   const getFallbackCompletedReport = (): CompletedCallReport => ({
@@ -79,6 +86,7 @@ export function DoctorCard({ doctor, callType = 'planned', onPress }: DoctorCard
       params: {
         id: doctor.id,
         callType,
+        callKind,
         completed: isCompleted ? '1' : '0',
         name: doctor.name,
         specialty: doctor.specialty,

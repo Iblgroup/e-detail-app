@@ -51,6 +51,17 @@ export default function TabLayout() {
         }}
       />
 
+      {/* Dashboard entry points — reached from the dashboard cards, not the tab
+          bar, but kept inside (tabs) so the bottom nav stays visible. */}
+      <Tabs.Screen
+        name="doctor-list"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="content-library"
+        options={{ href: null }}
+      />
+
       {/* Doctor detail lives inside the tabs so the bottom nav stays visible. */}
       <Tabs.Screen
         name="doctor/[id]"

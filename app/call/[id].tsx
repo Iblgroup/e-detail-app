@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import CallScreen from '@/views/planned-calls/call-screen';
-import { CallType } from '@/views/planned-calls/callTypes';
+import { CallType, type CallKind } from '@/views/planned-calls/callTypes';
 
 export default function CallScreenRoute() {
   const {
@@ -11,6 +11,7 @@ export default function CallScreenRoute() {
     specialtyId,
     teamId,
     institution,
+    callKind,
     latitude,
     longitude,
     arrivedTime,
@@ -23,6 +24,7 @@ export default function CallScreenRoute() {
     specialtyId?: string;
     teamId?: string;
     institution?: string;
+    callKind?: CallKind;
     latitude?: string;
     longitude?: string;
     arrivedTime?: string;
@@ -48,6 +50,7 @@ export default function CallScreenRoute() {
       specialtyId={normalizedSpecialtyId}
       teamId={normalizedTeamId}
       institutionType={normalizedInstitution}
+      callKind={getParam(callKind) as CallKind | undefined}
       arrivedLatitude={Number.isFinite(normalizedLatitude) ? normalizedLatitude : undefined}
       arrivedLongitude={Number.isFinite(normalizedLongitude) ? normalizedLongitude : undefined}
       arrivedTime={getParam(arrivedTime)}

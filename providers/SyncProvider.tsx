@@ -47,6 +47,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   // Re-armed only when connectivity returns (offline -> online).
   const autoSyncAttemptedRef = useRef(false);
   const wasOnlineRef = useRef(true);
+  // The user id we've already run a login/app-open sync for this process, so we
+  // pull fresh data once per user without re-syncing on every render.
+  const loginSyncedForRef = useRef<string | null>(null);
 
   // Load persisted manifest + sync metadata on startup.
   useEffect(() => {
@@ -114,6 +117,35 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   const isStale = isHydrated && lastSyncedFor !== todayWorkday();
   const hasNoData = isHydrated && lastSyncedFor === null;
+
+  // Sync once per user on login / app open when online — REGARDLESS of staleness.
+  // The stale check alone can't refresh data whose SHAPE changed on the same
+  // workday (e.g. after a backend deploy that adds columns), which otherwise
+  // leaves the app rendering yesterday's cached rows all day. Image downloads are
+  // skipped when already cached, so this is cheap when nothing new arrived. Also
+  // covers "sync when the internet comes back" (re-runs when isOnline flips true).
+  useEffect(() => {
+    const uid = user?.userId != null ? String(user.userId) : null;
+    if (!uid) {
+      // Logged out — allow the next login to trigger a fresh sync.
+      loginSyncedForRef.current = null;
+      return;
+    }
+    if (!isHydrated || !isAuthenticated || !isOnline) return;
+    if (!user?.mieId || !user?.teamId) return;
+    if (loginSyncedForRef.current === uid) return;
+
+    loginSyncedForRef.current = uid;
+    void syncNow();
+  }, [
+    isHydrated,
+    isAuthenticated,
+    isOnline,
+    user?.userId,
+    user?.mieId,
+    user?.teamId,
+    syncNow,
+  ]);
 
   // App-open catch-up + auto-sync on reconnect: if signed in and online but the
   // cached data isn't for today, sync. This is the real guarantee for a rep who
