@@ -42,6 +42,10 @@ export interface CallTrackingInput {
   call_type?: string; // 'planned' | 'unplanned'
   institution_call_type?: string; // 'walking' | 'group'
   call_outcome?: string;
+  /** Why the rep cancelled — set when call_outcome is 'cancelled'. */
+  cancel_reason?: string;
+  /** When the rep cancelled — ISO timestamp, set alongside cancel_reason. */
+  call_cancel_time?: string;
   route_json?: unknown; // jsonb
   engagement_score?: number;
   conversion_score?: number;

@@ -5,10 +5,12 @@ import { useSpecialties } from '@/api/content';
 import { AppBottomSheetSelect } from '@/components/ui/AppBottomSheetSelect';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { ArrivedButton } from './doctor-detail/ArrivedButton';
 import { CancelCallButton } from './doctor-detail/CancelCallButton';
+import { CancelCallModal } from './doctor-detail/CancelCallModal';
 import { StartCallButton } from './doctor-detail/StartCallButton';
+import { recordCancelledCall } from './recordCancelledCall';
 
 /**
  * Group calls: several doctors at once, picked at the End of the call, with
@@ -18,6 +20,8 @@ import { StartCallButton } from './doctor-detail/StartCallButton';
 export function InstitutionCallPanel() {
   const { user } = useAuth();
   const { arrived, arrival, toggleArrived, reset } = useArrival();
+  const [isCancelVisible, setIsCancelVisible] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   // Forcing for an institution call is driven by the chosen specialty.
   const specialtiesQuery = useSpecialties();
@@ -43,6 +47,39 @@ export function InstitutionCallPanel() {
     if (name === selectedSpecialtyName) return;
     setSelectedSpecialtyName(name);
     reset();
+  };
+
+  /**
+   * Cancelling a group call records it the same way chamber and parking do. The
+   * doctors were never picked (that happens at the End), so the row carries the
+   * chosen specialty instead of a doctor.
+   */
+  const handleConfirmCancel = async (reason: string) => {
+    const tsoid = user?.mieId ? String(user.mieId) : '';
+    if (!tsoid) {
+      Alert.alert('Cannot cancel', 'Your rep profile is missing. Please sign in again.');
+      return;
+    }
+
+    setIsCancelling(true);
+    try {
+      await recordCancelledCall(reason, {
+        tsoid,
+        // No doctor yet — a group call picks its attendees at the End.
+        doctor_specialty: selectedSpecialty?.specialty_name,
+        latitude: arrival?.latitude,
+        longitude: arrival?.longitude,
+        arrived_location: arrival?.arrivedLocation,
+        arrived_time: arrival?.arrivedTime,
+        call_type: 'planned',
+        institution_call_type: 'group',
+        created_by: Number(user?.userId) || undefined,
+      });
+    } finally {
+      setIsCancelling(false);
+      setIsCancelVisible(false);
+      reset();
+    }
   };
 
   const handleStartCall = () => {
@@ -91,9 +128,23 @@ export function InstitutionCallPanel() {
           <StartCallButton enabled={readyToArrive && arrived} onPress={handleStartCall} />
         </View>
         <View style={styles.buttonCellHalf}>
-          <CancelCallButton enabled={arrived} onPress={reset} />
+          <CancelCallButton enabled={arrived} onPress={() => setIsCancelVisible(true)} />
         </View>
       </View>
+
+      <CancelCallModal
+        visible={isCancelVisible}
+        subject={
+          selectedSpecialty
+            ? `Group Call — ${selectedSpecialty.specialty_name}`
+            : 'Group Call'
+        }
+        submitting={isCancelling}
+        onDismiss={() => setIsCancelVisible(false)}
+        onConfirm={(reason) => {
+          void handleConfirmCancel(reason);
+        }}
+      />
     </View>
   );
 }

@@ -7,15 +7,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 interface DoctorDetailHeaderProps {
   name: string;
   specialty: string;
+  /** Where the back chevron goes. Falls back to history when not given. */
+  onBack?: () => void;
 }
 
-export function DoctorDetailHeader({ name, specialty }: DoctorDetailHeaderProps) {
+export function DoctorDetailHeader({ name, specialty, onBack }: DoctorDetailHeaderProps) {
   return (
     <View style={styles.wrapper}>
       <SafeAreaView edges={['top']}>
         <View style={styles.topRow}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={onBack ?? (() => router.back())}
             style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
           >
             <Ionicons name="chevron-back" size={20} color={Colors.textOnDark} />

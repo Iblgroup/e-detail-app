@@ -99,7 +99,7 @@ export default function PlannedCalls() {
     const search = deferredSearchQuery.toLowerCase();
     if (search) {
       mappedDoctors = mappedDoctors.filter((doctor) =>
-        [doctor.name, doctor.specialty, doctor.hospital, doctor.address].some(
+        [doctor.name, doctor.specialty].some(
           (value) => value?.toLowerCase().includes(search)
         )
       );
@@ -280,7 +280,7 @@ export default function PlannedCalls() {
             <AppSearchInput
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder="Search doctors by name, city, or specialty"
+              placeholder="Search doctors by name or specialty"
             />
 
             {hasActiveSearch ? (

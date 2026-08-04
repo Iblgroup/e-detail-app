@@ -40,7 +40,7 @@ export default function DoctorList() {
     if (!search) return mapped;
 
     return mapped.filter((doctor) =>
-      [doctor.name, doctor.specialty, doctor.city, doctor.address].some((value) =>
+      [doctor.name, doctor.specialty].some((value) =>
         value?.toLowerCase().includes(search)
       )
     );
@@ -75,7 +75,7 @@ export default function DoctorList() {
             <AppSearchInput
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder="Search by name, specialty or city"
+              placeholder="Search by name or specialty"
             />
 
             {doctorsQuery.isLoading ? (

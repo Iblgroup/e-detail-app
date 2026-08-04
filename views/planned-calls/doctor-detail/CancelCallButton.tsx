@@ -8,7 +8,7 @@ interface CancelCallButtonProps {
 export function CancelCallButton({ onPress, enabled = true }: CancelCallButtonProps) {
   return (
     <DoctorActionButton
-      label="END CALL"
+      label="CANCEL CALL"
       iconName="close-outline"
       enabled={enabled}
       onPress={onPress}

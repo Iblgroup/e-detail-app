@@ -311,7 +311,7 @@ export function CallSummaryModal({
               textStyle={styles.cancelText}
             />
             <AppButton
-              label="End Call & Submit"
+              label="Submit Call"
               onPress={() => {
                 if (!canSubmit) return;
                 onSubmit({

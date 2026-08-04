@@ -116,6 +116,7 @@ export default function SettingsScreen() {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(true);
   const [sessionTimeoutEnabled, setSessionTimeoutEnabled] = useState(true);
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [pwSubmitting, setPwSubmitting] = useState(false);
@@ -126,6 +127,10 @@ export default function SettingsScreen() {
 
   const handleUpdatePassword = async () => {
     setPwMessage(null);
+    if (!currentPassword) {
+      setPwMessage({ type: 'error', text: 'Enter your current password.' });
+      return;
+    }
     if (newPassword.length < 6) {
       setPwMessage({ type: 'error', text: 'Password must be at least 6 characters.' });
       return;
@@ -134,9 +139,17 @@ export default function SettingsScreen() {
       setPwMessage({ type: 'error', text: 'Passwords do not match.' });
       return;
     }
+    if (newPassword === currentPassword) {
+      setPwMessage({
+        type: 'error',
+        text: 'New password must be different from the current one.',
+      });
+      return;
+    }
     setPwSubmitting(true);
     try {
-      await changePassword(newPassword);
+      await changePassword(currentPassword, newPassword);
+      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setPwMessage({ type: 'success', text: 'Password updated successfully.' });
@@ -204,6 +217,13 @@ export default function SettingsScreen() {
 
         <View style={[styles.mainColumn, isWide && styles.mainColumnWide]}>
           <SettingsCard icon="lock-closed-outline" title="Change Password">
+            <PasswordField
+              label="Current Password"
+              placeholder="Enter your current password"
+              icon="key-outline"
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+            />
             <PasswordField
               label="New Password"
               placeholder="Minimum 6 characters"

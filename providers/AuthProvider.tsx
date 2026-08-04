@@ -60,7 +60,7 @@ interface AuthContextValue {
   canEdit: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  changePassword: (newPassword: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   /** True while the on-open offline login mirror download is in progress. */
   isSyncingOfflineUsers: boolean;
 }
@@ -364,12 +364,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Change the signed-in user's password. Updates the server, then refreshes the
   // on-device offline credential so offline login works with the new password.
-  const changePassword = async (newPassword: string) => {
+  const changePassword = async (currentPassword: string, newPassword: string) => {
     if (!user) throw new Error('You are not signed in.');
     try {
+      // The backend verifies currentPassword before applying the change.
       await axios.post('/auth/change-password', {
         userId: user.userId,
         username: user.username,
+        currentPassword,
         newPassword,
       });
     } catch (error: any) {

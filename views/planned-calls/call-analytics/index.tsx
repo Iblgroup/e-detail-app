@@ -238,13 +238,13 @@ export default function CallAnalytics({
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.metricGrid}>
+          {/* The comparison pill ("+/- vs last" / "First call") is hidden for
+              now — restore with pill={durationPill} tone={durationTone}. */}
           <AppMetricCard
             icon="time-outline"
             accent={Colors.primary}
             label="Total Duration"
             value={formatDuration(durationSeconds)}
-            pill={durationPill}
-            tone={durationTone}
           />
           <AppMetricCard
             icon="document-text-outline"

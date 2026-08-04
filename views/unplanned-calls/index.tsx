@@ -110,7 +110,7 @@ export default function UnplannedCalls() {
     const fetchedDoctors = mapDoctorRows(doctorsQuery.data?.pages.flatMap((page) => page.data) ?? []);
     const normalizedSearch = deferredSearchQuery.toLowerCase();
     const matchesSearch = (doctor: Doctor) =>
-      [doctor.name, doctor.specialty, doctor.hospital, doctor.address].some(
+      [doctor.name, doctor.specialty].some(
         (value) => value?.toLowerCase().includes(normalizedSearch)
       );
     const filteredAddedDoctors = !normalizedSearch
@@ -296,7 +296,7 @@ export default function UnplannedCalls() {
             <AppSearchInput
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder="Search team doctors by name, city, or specialty"
+              placeholder="Search team doctors by name or specialty"
             />
 
             {hasActiveSearch ? (
