@@ -11,10 +11,17 @@ interface DetailFieldProps {
 function DetailField({ iconName, label, value }: DetailFieldProps) {
   return (
     <View style={styles.field}>
-      <Ionicons name={iconName} size={16} color={Colors.primary} />
-      <View>
+      {/* Filled tile, white glyph — reads as one solid marker per fact rather
+          than six loose outlines. */}
+      <View style={styles.iconTile}>
+        <Ionicons name={iconName} size={16} color={Colors.textOnDark} />
+      </View>
+
+      <View style={styles.fieldText}>
         <Text style={styles.label}>{label}</Text>
-        <Text style={styles.value}>{value}</Text>
+        <Text style={styles.value} numberOfLines={2}>
+          {value}
+        </Text>
       </View>
     </View>
   );
@@ -72,25 +79,40 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 20,
+    rowGap: 18,
+    columnGap: 16,
   },
   field: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    width: '45%',
+    alignItems: 'center',
+    gap: 10,
+    flexGrow: 1,
+    flexBasis: '45%',
+    minWidth: 200,
+  },
+  iconTile: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+  },
+  fieldText: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
   },
   label: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '700',
     color: Colors.textMuted,
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
   value: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: Colors.text,
-    marginTop: 2,
   },
 });

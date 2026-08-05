@@ -22,8 +22,18 @@ export interface DoctorDataRow {
   ClinicAddress?: string;
   /** doctors.pmdc — the doctor's PMDC registration number. */
   PMDC?: string;
-  /** doctors.class — the doctor's class (A1 / A2 / A3 / A4 ...). */
+  /** The doctor's class for THIS rep (A1 / A2 / A3 / A4 ...). */
   DoctorClass?: string;
+  /** Completed calls this rep has made on the doctor this month. */
+  VisitCount?: number | null;
+  /** Calls the class requires this month (A1:1 … A4:4). Null when unclassified. */
+  MaxVisitCount?: number | null;
+  /** 'completed' once the month's quota is met, else 'in_progress'. */
+  VisitStatus?: string | null;
+  /** This month's completed calls split by how they were conducted. */
+  VisitsChamber?: number | null;
+  VisitsGroup?: number | null;
+  VisitsParking?: number | null;
   /** YYYY-MM-DD of the rep's most recent recorded call, null when never called. */
   LastVisit?: string | null;
 }

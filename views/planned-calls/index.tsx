@@ -1,21 +1,28 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  ActivityIndicator,
+  FlatList,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { AppSearchInput } from '@/components/ui/AppSearchInput';
+import { CompletedToggle } from '@/components/ui/CompletedToggle';
 import { ScreenLayout } from '@/components/ui/ScreenLayout';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/providers/AuthProvider';
 import { useInfinitePlannedDoctors } from '@/api/doctor';
 import { savePlannedForMie, seedPlannedFromBulk } from '@/lib/offline/plannedBulk';
-import { useCompletedDoctorIds } from '@/api/calls';
+import { completedDoctorIdsKey, useCompletedDoctorIds } from '@/api/calls';
 import { getPendingCallDoctorIds } from '@/lib/offline/outbox';
-import { ScheduleSectionHeader } from './ScheduleSectionHeader';
 import { CallKindSelector } from './CallKindSelector';
 import type { CallKind } from './callTypes';
 import { DoctorCard } from './DoctorCard';
 import { mapDoctorRows } from './mapDoctor';
 import { InstitutionCallPanel } from './InstitutionCallPanel';
-import { getCompletedCallIds } from './callCompletionStore';
 
 // Doctors revealed per scroll, sliced from the fully-cached list (no network).
 const LIST_PAGE = 30;
@@ -26,13 +33,13 @@ export default function PlannedCalls() {
   // (single-doctor) flow. All three kinds are available regardless of the
   // territory/institution mode, which lives in Settings only.
   const [callKind, setCallKind] = useState<CallKind>('chamber');
-  const [completedCallIds, setCompletedCallIds] = useState(() => getCompletedCallIds('planned'));
+  const queryClient = useQueryClient();
   // Doctor ids of calls queued offline (not yet synced to call_tracking).
   const [outboxDoctorIds, setOutboxDoctorIds] = useState<string[]>([]);
   // Doctor ids the rep has RECORDED a call for today (server call_tracking).
   const { data: serverCompletedIds } = useCompletedDoctorIds(user?.mieId);
-  // Active = calls not yet done; Completed = calls already finished.
-  const [filter, setFilter] = useState<'active' | 'completed'>('active');
+  // On = doctors finished for the selected call kind; off = still to do.
+  const [showCompleted, setShowCompleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const deferredSearchQuery = useDeferredValue(searchQuery.trim());
   // How many of the cached doctors are currently shown (client-side paging).
@@ -67,28 +74,38 @@ export default function PlannedCalls() {
     }
   }, [user?.mieId, user?.teamId, plannedRows.length]);
 
-  // Restart paging when the search or the Active/Completed tab changes.
+  // Restart paging when the search, the toggle, or the call kind changes.
   useEffect(() => {
     setVisibleCount(LIST_PAGE);
-  }, [deferredSearchQuery, filter]);
+  }, [deferredSearchQuery, showCompleted, callKind]);
 
+  // Coming back from a call: pull the outbox again and refetch the server-side
+  // counts, so a call that just synced shows its new visit tally rather than the
+  // figures this screen was rendered with before the call.
   useFocusEffect(
     useCallback(() => {
-      setCompletedCallIds(getCompletedCallIds('planned'));
       void getPendingCallDoctorIds().then(setOutboxDoctorIds);
-    }, [])
+      void queryClient.invalidateQueries({ queryKey: ['planned-doctors'] });
+      void queryClient.invalidateQueries({
+        queryKey: completedDoctorIdsKey(user?.mieId),
+      });
+    }, [queryClient, user?.mieId])
   );
 
-  // A doctor is "completed" if recorded on the server (call_tracking) today, has
-  // a pending offline call queued, or was finished this session (in-memory).
+  // Calls that are NOT yet on the server — still sitting in the offline outbox.
+  // Only these may bump the count optimistically. A call that synced is already
+  // in the server's tally, and adding to it again marked an A2 doctor 2/2 after
+  // a single call, wrongly moving them to Completed.
+  const unsyncedSet = useMemo(
+    () => new Set<string>(outboxDoctorIds),
+    [outboxDoctorIds]
+  );
+
+  // A doctor is DONE only when the month's class quota is met — an A4 doctor
+  // needs four calls, not one. The server decides that (doctor_tso_class_monthly_visit).
   const completedSet = useMemo(
-    () =>
-      new Set<string>([
-        ...completedCallIds,
-        ...(serverCompletedIds ?? []),
-        ...outboxDoctorIds,
-      ]),
-    [completedCallIds, serverCompletedIds, outboxDoctorIds]
+    () => new Set<string>(serverCompletedIds ?? []),
+    [serverCompletedIds]
   );
 
   const doctors = useMemo(() => {
@@ -106,31 +123,67 @@ export default function PlannedCalls() {
     }
 
     return mappedDoctors
-      .map((doctor) => ({
-        ...doctor,
-        status: completedSet.has(doctor.id) ? 'completed' as const : 'pending' as const,
-      }))
+      .map((doctor) => {
+        // Only an unsynced call is missing from the server's count; add it so
+        // the rep sees their circle straight away.
+        const pendingVisit = unsyncedSet.has(doctor.id) ? 1 : 0;
+        const recorded = (doctor.visitCount ?? 0) + pendingVisit;
+        const visitCount = doctor.maxVisits
+          ? Math.min(recorded, doctor.maxVisits)
+          : recorded;
+
+        // Done ONLY when the month's quota is met — an A2 doctor needs 2 calls,
+        // an A4 needs 4. A doctor with no quota falls back to "called at all".
+        const quotaMet = doctor.maxVisits
+          ? visitCount >= doctor.maxVisits
+          : completedSet.has(doctor.id) || unsyncedSet.has(doctor.id);
+
+        return {
+          ...doctor,
+          visitCount,
+          status: quotaMet ? ('completed' as const) : ('pending' as const),
+        };
+      })
       .sort((a, b) => Number(a.status === 'completed') - Number(b.status === 'completed'));
-  }, [completedSet, deferredSearchQuery, doctorsQuery.data?.pages]);
+  }, [completedSet, unsyncedSet, deferredSearchQuery, doctorsQuery.data?.pages]);
+
+  /**
+   * Completed FOR THE SELECTED CALL KIND: the doctor's monthly quota has to be
+   * met AND they must actually have a call of this kind on record. So an A4
+   * doctor with 2 chamber + 1 group + 1 parking shows as completed under all
+   * three, while one still at 3/4 shows under none.
+   */
+  const isCompletedForKind = useCallback(
+    (doctor: (typeof doctors)[number]) => {
+      if (doctor.status !== 'completed') return false;
+
+      const byKind: Record<CallKind, number> = {
+        chamber: doctor.visitsChamber ?? 0,
+        group: doctor.visitsGroup ?? 0,
+        parking: doctor.visitsParking ?? 0,
+      };
+
+      return (byKind[callKind] ?? 0) > 0;
+    },
+    [callKind]
+  );
 
   const activeCount = useMemo(
-    () => doctors.filter((doctor) => doctor.status !== 'completed').length,
-    [doctors]
+    () => doctors.filter((doctor) => !isCompletedForKind(doctor)).length,
+    [doctors, isCompletedForKind]
   );
   const completedCount = useMemo(
-    () => doctors.filter((doctor) => doctor.status === 'completed').length,
-    [doctors]
+    () => doctors.filter(isCompletedForKind).length,
+    [doctors, isCompletedForKind]
   );
 
-  // Only the doctors for the selected tab (Active = pending, Completed = done).
+  // Toggle on → finished for this kind; off → still outstanding for it.
   const filteredDoctors = useMemo(
     () =>
       doctors.filter((doctor) =>
-        filter === 'completed'
-          ? doctor.status === 'completed'
-          : doctor.status !== 'completed'
+        showCompleted ? isCompletedForKind(doctor) : !isCompletedForKind(doctor)
       ),
-    [doctors, filter]
+    [doctors, showCompleted, isCompletedForKind]
   );
 
   const visibleDoctors = useMemo(
@@ -156,17 +209,80 @@ export default function PlannedCalls() {
   // parking both run the doctor-by-doctor flow below — identical apart from the
   // kind recorded against the call. The Call Type selector sits above either
   // view so the rep can switch without leaving the screen.
-  if (callKind === 'group') {
+  // A group call is set up through its own panel (doctors are picked at the End
+  // of the call, not before it). But its COMPLETED doctors are an ordinary list,
+  // so the toggle swaps the panel out for one — otherwise Group was the only
+  // kind where turning the toggle on showed a count and nothing else.
+  const showInstitutionPanel = callKind === 'group' && !showCompleted;
+
+  // Pinned above the Call Type selector: the count, the Completed toggle and
+  // the search stay put while the list scrolls under them.
+  const stickyHeader = (
+    <View style={styles.stickyHeader}>
+      <View style={styles.stickyTop}>
+        <View style={styles.stickyTitleBlock}>
+          <View style={styles.stickyTitleRow}>
+            <Text style={styles.stickyTitle}>Assigned Doctors</Text>
+            <View style={styles.stickyCount}>
+              <Text style={styles.stickyCountText}>
+                {showCompleted ? completedCount : activeCount}
+              </Text>
+            </View>
+          </View>
+
+          {!doctorsQuery.isLoading && !doctorsQuery.isError && totalLoaded > 0 ? (
+            <Text style={styles.summaryText} numberOfLines={1}>
+              {showInstitutionPanel
+                ? // No list is rendered behind the group setup panel, so a
+                  // "showing X of Y" count would describe nothing.
+                  `${totalLoaded} doctors available for group calls`
+                : `${visibleDoctors.length} of ${filteredDoctors.length} ${
+                    showCompleted ? 'completed' : 'active'
+                  } ${callKind} calls`}
+            </Text>
+          ) : null}
+        </View>
+
+        <CompletedToggle value={showCompleted} onChange={setShowCompleted} />
+      </View>
+
+      <AppSearchInput
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder="Search doctors by name or specialty"
+      />
+    </View>
+  );
+
+  if (showInstitutionPanel) {
     return (
-      <ScreenLayout title="Call Reporting" notificationCount={1}>
-        <CallKindSelector value={callKind} onChange={setCallKind} />
-        <InstitutionCallPanel />
+      // Same non-scrolling shell as the other kinds: ScreenLayout's scrollable
+      // mode adds its own 16px padding, which double-inset the pinned header and
+      // the Call Type card here but nowhere else. The panel scrolls on its own.
+      <ScreenLayout title="Call Reporting" notificationCount={1} scrollable={false}>
+        {stickyHeader}
+
+        <CallKindSelector
+          value={callKind}
+          onChange={setCallKind}
+          style={styles.callKindSelector}
+        />
+
+        <ScrollView
+          style={styles.panelScroll}
+          contentContainerStyle={styles.panelContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <InstitutionCallPanel />
+        </ScrollView>
       </ScreenLayout>
     );
   }
 
   return (
     <ScreenLayout title="Call Reporting" notificationCount={1} scrollable={false}>
+      {stickyHeader}
+
       <CallKindSelector
         value={callKind}
         onChange={setCallKind}
@@ -184,37 +300,6 @@ export default function PlannedCalls() {
         onEndReachedThreshold={0.35}
         ListHeaderComponent={
           <View style={styles.section}>
-            <ScheduleSectionHeader
-              title="Assigned Doctors"
-              count={filter === 'active' ? activeCount : completedCount}
-              action={
-                <View style={styles.filterToggle}>
-                  {(['active', 'completed'] as const).map((key) => {
-                    const selected = filter === key;
-                    return (
-                      <Pressable
-                        key={key}
-                        onPress={() => setFilter(key)}
-                        style={[
-                          styles.filterButton,
-                          selected && styles.filterButtonActive,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.filterText,
-                            selected && styles.filterTextActive,
-                          ]}
-                        >
-                          {key === 'active' ? 'Active' : 'Completed'}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              }
-            />
-
             {doctorsQuery.isLoading ? (
               <View style={styles.stateCard}>
                 <ActivityIndicator color={Colors.primary} />
@@ -243,22 +328,10 @@ export default function PlannedCalls() {
               </View>
             ) : null}
 
-            {!doctorsQuery.isLoading &&
-            !doctorsQuery.isError &&
-            totalLoaded > 0 &&
-            filteredDoctors.length > 0 ? (
-              <View style={styles.summaryBlock}>
-                <Text style={styles.summaryText}>
-                  Showing {visibleDoctors.length} of {filteredDoctors.length}{' '}
-                  {filter === 'completed' ? 'completed calls' : 'active calls'} for{' '}
-                  {user?.name ?? 'this rep'}.
-                </Text>
-                {sourceLabel === 'temporary-fallback' ? (
-                  <Text style={styles.sourceHint}>
-                    Temporary planned list from the rep doctor pool.
-                  </Text>
-                ) : null}
-              </View>
+            {sourceLabel === 'temporary-fallback' ? (
+              <Text style={styles.sourceHint}>
+                Temporary planned list from the rep doctor pool.
+              </Text>
             ) : null}
 
             {!doctorsQuery.isLoading &&
@@ -267,25 +340,21 @@ export default function PlannedCalls() {
             filteredDoctors.length === 0 ? (
               <View style={styles.stateCard}>
                 <Text style={styles.stateTitle}>
-                  {filter === 'completed' ? 'No completed calls yet' : 'No active calls'}
+                  {showCompleted
+                    ? `No completed ${callKind} calls yet`
+                    : `No active ${callKind} calls`}
                 </Text>
                 <Text style={styles.stateText}>
-                  {filter === 'completed'
-                    ? 'Calls you finish will show up here.'
-                    : 'All your planned calls are completed.'}
+                  {showCompleted
+                    ? `Doctors finish here once their month's calls are done and one was a ${callKind} call.`
+                    : `Every doctor with a ${callKind} call is already finished for the month.`}
                 </Text>
               </View>
             ) : null}
 
-            <AppSearchInput
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search doctors by name or specialty"
-            />
-
             {hasActiveSearch ? (
               <Text style={styles.searchHint}>
-                Search results for "{deferredSearchQuery}"
+                Search results for &quot;{deferredSearchQuery}&quot;
               </Text>
             ) : null}
           </View>
@@ -310,41 +379,70 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 10,
   },
-  filterToggle: {
-    flexDirection: 'row',
-    backgroundColor: '#EEF2F6',
-    borderRadius: 10,
-    padding: 3,
-    gap: 2,
-  },
-  filterButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  filterButtonActive: {
+  // Pinned above the Call Type selector, so the count, toggle and search stay
+  // reachable while the doctor list scrolls beneath them. Raised on its own
+  // surface with a shadow — a flat strip just blended into the page.
+  stickyHeader: {
+    gap: 16,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+    borderRadius: 14,
     backgroundColor: Colors.surface,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+    zIndex: 5,
   },
-  filterText: {
-    fontSize: 12.5,
+  stickyTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  stickyTitleBlock: {
+    flex: 1,
+    minWidth: 0,
+    gap: 5,
+  },
+  stickyTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  stickyTitle: {
+    fontSize: 16,
     fontWeight: '800',
-    color: Colors.textMuted,
+    color: Colors.text,
   },
-  filterTextActive: {
-    color: Colors.primary,
+  stickyCount: {
+    minWidth: 24,
+    alignItems: 'center',
+    borderRadius: 6,
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  stickyCountText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.secondary,
   },
   summaryText: {
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 12,
     color: Colors.textMuted,
   },
-  summaryBlock: {
-    gap: 4,
+  panelScroll: {
+    flex: 1,
+  },
+  // No horizontal padding here: InstitutionCallPanel already applies its own
+  // 16px, and adding a second one inset its cards past the Call Type selector.
+  panelContent: {
+    paddingBottom: 32,
   },
   sourceHint: {
     fontSize: 12,

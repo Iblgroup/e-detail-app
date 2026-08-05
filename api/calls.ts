@@ -112,3 +112,91 @@ export const useCompletedDoctorIds = (mieId?: string) => {
     staleTime: 60 * 1000,
   });
 };
+
+/** One completed call in the month's history with a doctor. */
+export interface DoctorCallRecord {
+  callId: number;
+  date: string;
+  kind?: string | null;
+  callType?: string | null;
+  durationSeconds: number;
+  slidesShown: number;
+  slidesTotal: number;
+  slidesSeconds: number;
+  brands: string[];
+  skus: string[];
+  feedback?: string | null;
+  feedbackComment?: string | null;
+  sampleProvided: boolean;
+}
+
+export interface DoctorCallSummary {
+  totalCalls: number;
+  byKind: { chamber: number; group: number; parking: number };
+  durationSeconds: number;
+  slidesShown: number;
+  slidesTotal: number;
+  samplesProvided: number;
+  brands: string[];
+  skus: string[];
+  /** Seconds spent per brand / per SKU across the month, highest first. */
+  brandTimes: { name: string; seconds: number }[];
+  skuTimes: { name: string; seconds: number }[];
+  /** The doctor's class for this rep, and the month's quota it sets. */
+  doctorClass?: string | null;
+  maxVisits?: number | null;
+  visitsDone?: number;
+  /** Calls still owed this month; null when the class carries no quota. */
+  remainingVisits?: number | null;
+  /** Date of the most recent completed call, or null. */
+  lastVisit?: string | null;
+}
+
+export interface DoctorCallSummaryResponse {
+  success: boolean;
+  summary: DoctorCallSummary;
+  calls: DoctorCallRecord[];
+}
+
+export const doctorCallSummaryKey = (
+  mieId?: string,
+  doctorId?: string,
+  kind?: string
+) =>
+  [
+    'doctor-call-summary',
+    mieId ?? 'no-mie',
+    doctorId ?? 'no-doctor',
+    kind ?? 'all-kinds',
+  ] as const;
+
+export const getDoctorCallSummary = async (
+  mieId: string,
+  doctorId: string,
+  kind?: string
+): Promise<DoctorCallSummaryResponse> => {
+  return axios.get('/calls/doctor-summary', {
+    params: { mieId, doctorId, kind },
+  }) as unknown as Promise<DoctorCallSummaryResponse>;
+};
+
+/**
+ * Everything this rep has done with a doctor this month — the calls themselves
+ * plus the totals. Drives the completed-call analytics screen, which otherwise
+ * only knows about the call just made (and nothing at all when reopened later).
+ *
+ * `kind` narrows it to one way of calling, so a report opened from the Group tab
+ * reports on group calls rather than every call the doctor had.
+ */
+export const useDoctorCallSummary = (
+  mieId?: string,
+  doctorId?: string,
+  kind?: string
+) => {
+  return useQuery({
+    queryKey: doctorCallSummaryKey(mieId, doctorId, kind),
+    queryFn: () => getDoctorCallSummary(mieId as string, doctorId as string, kind),
+    enabled: Boolean(mieId && doctorId),
+    staleTime: 60 * 1000,
+  });
+};

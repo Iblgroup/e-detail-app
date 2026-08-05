@@ -62,14 +62,18 @@ export interface TeamBrandSku {
   skuName: string;
   forcing: number | null;
   slideCount: number;
+  /** Every image for the SKU, in play order. */
+  slideUrls?: string[];
 }
 
 export interface TeamBrand {
   brandId: string | null;
   brandName: string;
   forcing: number | null;
-  /** Slides across the brand, including its SKUs. */
+  /** Images across the brand, including its SKUs. */
   slideCount: number;
+  /** Every image for the brand, in play order. */
+  slideUrls?: string[];
   skus: TeamBrandSku[];
 }
 
@@ -80,7 +84,17 @@ export const getTeamBrands = async (teamId: number): Promise<TeamBrand[]> => {
   const res = (await axios.get(ApiEndpoints.teamBrands, {
     params: { teamId },
   })) as unknown as { success: boolean; data: TeamBrand[] };
-  return res.data ?? [];
+
+  // Point the previews at whatever host this build talks to, the same way slide
+  // images are resolved — a stored URL may carry a different origin.
+  return (res.data ?? []).map((brand) => ({
+    ...brand,
+    slideUrls: (brand.slideUrls ?? []).map(normalizeAssetUrl),
+    skus: brand.skus.map((sku) => ({
+      ...sku,
+      slideUrls: (sku.slideUrls ?? []).map(normalizeAssetUrl),
+    })),
+  }));
 };
 
 /**

@@ -84,6 +84,31 @@ function mapForcingSlides(slides: DoctorCallSlide[]): Slide[] {
   }));
 }
 
+/**
+ * Seconds spent per brand (or per SKU), summed across the deck's slides.
+ *
+ * Read from the slide's own `brandName` / `skuName` rather than its display
+ * label: a BRAND-WISE forcing row has no SKU, and its subtitle falls back to the
+ * brand name, so parsing the label would report the brand as though it were a
+ * SKU. Slides with no value for the key are skipped — that's what makes a
+ * brand-wise call come back with an empty SKU list.
+ */
+function aggregateSlideTimes(
+  slides: Slide[],
+  slideTimes: number[],
+  key: 'brandName' | 'skuName'
+) {
+  const totals = new Map<string, number>();
+
+  slides.forEach((slide, index) => {
+    const name = (slide[key] ?? '').trim();
+    if (!name) return;
+    totals.set(name, (totals.get(name) ?? 0) + (slideTimes[index] ?? 0));
+  });
+
+  return [...totals.entries()].map(([name, seconds]) => ({ name, seconds }));
+}
+
 function getAnalyticsSlideLabel(slide: Slide) {
   const title = slide.title?.trim();
   const subtitle = slide.subtitle?.trim();
@@ -361,6 +386,19 @@ export default function CallScreen({
         brandObjects.push({ id, name });
       }
 
+      // { name: seconds } maps for the jsonb timing columns.
+      const toSecondsMap = (entries: { name: string; seconds: number }[]) =>
+        entries.reduce<Record<string, number>>((map, entry) => {
+          map[entry.name] = entry.seconds;
+          return map;
+        }, {});
+      const brandSecondsByName = toSecondsMap(
+        aggregateSlideTimes(slides, slideTimes, 'brandName')
+      );
+      const skuSecondsByName = toSecondsMap(
+        aggregateSlideTimes(slides, slideTimes, 'skuName')
+      );
+
       const seenSku = new Set<string>();
       const skuObjects: { brand_id: number | null; name: string }[] = [];
       for (const slide of effectiveShown) {
@@ -392,6 +430,11 @@ export default function CallScreen({
           shown_slides_count: slidesViewed,
           slides_total_time_seconds: slidesTotalSeconds,
           each_slide_time: eachSlideTime,
+          // Seconds per brand and per SKU, so a month of calls can be charted
+          // without re-deriving them from slide labels (a brand-wise deck has no
+          // SKU, and its label repeats the brand name).
+          brand_slide_time: brandSecondsByName,
+          sku_slide_time: skuSecondsByName,
           // brand + sku as linked objects (jsonb columns).
           brand: brandObjects.length ? brandObjects : undefined,
           sku: skuObjects.length ? skuObjects : undefined,
@@ -485,6 +528,8 @@ export default function CallScreen({
         params: {
           id: doctorId ?? 'unknown',
           callType,
+          // This report is about the call just finished, not the whole month.
+          mode: 'single',
           doctorName: effectiveDoctorName,
           duration: String(elapsedSeconds),
           previousDuration: previousDuration != null ? String(previousDuration) : '',
@@ -496,6 +541,12 @@ export default function CallScreen({
           samplesProvided: summary.samplesProvided,
           slideTimes: slideTimes.join(','),
           slideLabels: JSON.stringify(slides.map(getAnalyticsSlideLabel)),
+          // Split explicitly: the chart is brand-wise, the rows under it are
+          // SKU-wise, and a brand-wise deck sends an empty SKU list.
+          brandTimes: JSON.stringify(aggregateSlideTimes(slides, slideTimes, 'brandName')),
+          skuTimes: JSON.stringify(aggregateSlideTimes(slides, slideTimes, 'skuName')),
+          // How this call was conducted, so its report can state it.
+          callKind: recordedCallKind,
           returnToNewDoctor: returnToNewDoctor ? '1' : '0',
         },
       });

@@ -52,6 +52,13 @@ export function mapDoctorRow(row: DoctorDataRow): Doctor {
     doctorClass: asText(row.DoctorClass),
     pmdc: asText(row.PMDC),
     teamId: row.TEAMID,
+    // Monthly coverage: how many of the class's required calls are done.
+    visitCount: row.VisitCount ?? 0,
+    maxVisits: row.MaxVisitCount ?? null,
+    visitStatus: row.VisitStatus === 'completed' ? 'completed' : 'in_progress',
+    visitsChamber: row.VisitsChamber ?? 0,
+    visitsGroup: row.VisitsGroup ?? 0,
+    visitsParking: row.VisitsParking ?? 0,
   };
 }
 

@@ -1,19 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
-import CallAnalytics from '@/views/planned-calls/call-analytics';
+import CallAnalytics, { type AnalyticsMode } from '@/views/planned-calls/call-analytics';
 import { CallType } from '@/views/planned-calls/callTypes';
-
-const DOCTOR_NAMES: Record<string, string> = {
-  '1': 'Dr. Sarah Smith',
-  '2': 'Dr. Ahmed Khan',
-  '3': 'Dr. Sarah Smith',
-  '4': 'Dr. Ayesha Malik',
-  '5': 'Dr. Omar Farooq',
-  '6': 'Dr. Nadia Ali',
-  '7': 'Dr. Bilal Qureshi',
-  '8': 'Dr. Sana Tariq',
-  '9': 'Dr. Hammad Raza',
-  '10': 'Dr. Zainab Noor',
-};
+import { useAuth } from '@/providers/AuthProvider';
 
 function parseNumber(value: string | string[] | undefined, fallback = 0) {
   const rawValue = Array.isArray(value) ? value[0] : value;
@@ -32,6 +20,26 @@ function parseSlideTimes(value: string | string[] | undefined) {
     .filter((item) => Number.isFinite(item));
 }
 
+/** Parses the `[{ name, seconds }]` brand/SKU breakdowns the call screen sends. */
+function parseNamedTimes(value: string | string[] | undefined) {
+  const rawValue = Array.isArray(value) ? value[0] : value;
+  if (!rawValue) return [];
+
+  try {
+    const parsed = JSON.parse(rawValue);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .map((item) => ({
+        name: String(item?.name ?? '').trim(),
+        seconds: Number(item?.seconds) || 0,
+      }))
+      .filter((item) => item.name);
+  } catch {
+    return [];
+  }
+}
+
 function parseSlideLabels(value: string | string[] | undefined) {
   const rawValue = Array.isArray(value) ? value[0] : value;
   if (!rawValue) return [];
@@ -47,6 +55,7 @@ function parseSlideLabels(value: string | string[] | undefined) {
 }
 
 export default function CallAnalyticsRoute() {
+  const { user } = useAuth();
   const params = useLocalSearchParams<{
     id: string;
     duration?: string;
@@ -57,7 +66,11 @@ export default function CallAnalyticsRoute() {
     doctorInterest?: 'High' | 'Medium' | 'Low';
     slideTimes?: string;
     slideLabels?: string;
+    brandTimes?: string;
+    skuTimes?: string;
     callType?: CallType;
+    callKind?: string;
+    mode?: string;
     doctorName?: string;
     returnToNewDoctor?: string;
   }>();
@@ -77,9 +90,27 @@ export default function CallAnalyticsRoute() {
       ? Number(rawPrevDuration)
       : undefined;
 
+  // Set explicitly by whoever opened the screen: the call screen sends 'single',
+  // the Completed list sends 'combined'. Inferring it from the presence of call
+  // params was unreliable — a stale in-session report made a list tap look like
+  // a fresh call. Falls back to that inference only for older links.
+  const rawMode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
+  const rawDuration = Array.isArray(params.duration) ? params.duration[0] : params.duration;
+  const mode: AnalyticsMode =
+    rawMode === 'combined' || rawMode === 'single'
+      ? rawMode
+      : rawDuration
+        ? 'single'
+        : 'combined';
+  const callKind = Array.isArray(params.callKind) ? params.callKind[0] : params.callKind;
+
   return (
     <CallAnalytics
-      doctorName={doctorName ?? DOCTOR_NAMES[doctorId]}
+      doctorName={doctorName}
+      doctorId={doctorId}
+      mieId={user?.mieId}
+      mode={mode}
+      callKind={callKind}
       callType={normalizedCallType}
       durationSeconds={parseNumber(params.duration)}
       previousDurationSeconds={previousDurationSeconds}
@@ -89,6 +120,8 @@ export default function CallAnalyticsRoute() {
       doctorInterest={params.doctorInterest}
       slideTimes={parseSlideTimes(params.slideTimes)}
       slideLabels={parseSlideLabels(params.slideLabels)}
+      brandTimes={parseNamedTimes(params.brandTimes)}
+      skuTimes={parseNamedTimes(params.skuTimes)}
       returnToNewDoctor={returnToNewDoctor}
     />
   );

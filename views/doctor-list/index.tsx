@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useInfinitePlannedDoctors } from '@/api/doctor';
 import { AppSearchInput } from '@/components/ui/AppSearchInput';
+import { CompletedToggle } from '@/components/ui/CompletedToggle';
 import { ScreenLayout } from '@/components/ui/ScreenLayout';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/providers/AuthProvider';
@@ -25,16 +26,40 @@ export default function DoctorList() {
   const [searchQuery, setSearchQuery] = useState('');
   const deferredSearchQuery = useDeferredValue(searchQuery.trim());
   const [visibleCount, setVisibleCount] = useState(LIST_PAGE);
+  // On = only doctors whose whole month's quota is met.
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const doctorsQuery = useInfinitePlannedDoctors({
     mieId: user?.mieId,
     teamId: user?.teamId,
   });
 
+  const allDoctors = useMemo(
+    () => mapDoctorRows(doctorsQuery.data?.pages.flatMap((page) => page.data) ?? []),
+    [doctorsQuery.data?.pages]
+  );
+
+  /**
+   * Done for the month across EVERY call kind — this screen is the combined
+   * view, so an A4 doctor counts once they reach 4 calls however they were
+   * conducted. The per-kind split lives on Call Reporting.
+   */
+  const completedCount = useMemo(
+    () =>
+      allDoctors.filter(
+        (doctor) => doctor.maxVisits && (doctor.visitCount ?? 0) >= doctor.maxVisits
+      ).length,
+    [allDoctors]
+  );
+
   const doctors = useMemo(() => {
-    const mapped = mapDoctorRows(
-      doctorsQuery.data?.pages.flatMap((page) => page.data) ?? []
-    );
+    let mapped = allDoctors;
+
+    if (showCompleted) {
+      mapped = mapped.filter(
+        (doctor) => doctor.maxVisits && (doctor.visitCount ?? 0) >= doctor.maxVisits
+      );
+    }
 
     const search = deferredSearchQuery.toLowerCase();
     if (!search) return mapped;
@@ -44,12 +69,12 @@ export default function DoctorList() {
         value?.toLowerCase().includes(search)
       )
     );
-  }, [deferredSearchQuery, doctorsQuery.data?.pages]);
+  }, [allDoctors, deferredSearchQuery, showCompleted]);
 
-  // Restart paging whenever the search narrows the list.
+  // Restart paging whenever the search or the toggle narrows the list.
   useEffect(() => {
     setVisibleCount(LIST_PAGE);
-  }, [deferredSearchQuery]);
+  }, [deferredSearchQuery, showCompleted]);
 
   const visibleDoctors = useMemo(
     () => doctors.slice(0, visibleCount),
@@ -62,6 +87,36 @@ export default function DoctorList() {
 
   return (
     <ScreenLayout title="Doctor List" subtitle={user?.name} scrollable={false} showBack>
+      {/* Pinned: the combined completion filter and the search stay reachable
+          while the book scrolls beneath them. */}
+      <View style={styles.stickyHeader}>
+        <View style={styles.stickyRow}>
+          <View style={styles.stickyTitleBlock}>
+            <View style={styles.stickyTitleRow}>
+              <Text style={styles.stickyTitle}>
+                {showCompleted ? 'Completed Doctors' : 'All Doctors'}
+              </Text>
+              <View style={styles.stickyCount}>
+                <Text style={styles.stickyCountText}>{doctors.length}</Text>
+              </View>
+            </View>
+            <Text style={styles.stickySubtitle} numberOfLines={1}>
+              {showCompleted
+                ? "Monthly calls complete"
+                : `${completedCount} of ${allDoctors.length} complete this month`}
+            </Text>
+          </View>
+
+          <CompletedToggle value={showCompleted} onChange={setShowCompleted} />
+        </View>
+
+        <AppSearchInput
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search by name or specialty"
+        />
+      </View>
+
       <FlatList
         data={visibleDoctors}
         keyExtractor={(doctor) => doctor.id}
@@ -72,12 +127,6 @@ export default function DoctorList() {
         onEndReachedThreshold={0.35}
         ListHeaderComponent={
           <View style={styles.header}>
-            <AppSearchInput
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search by name or specialty"
-            />
-
             {doctorsQuery.isLoading ? (
               <View style={styles.stateCard}>
                 <ActivityIndicator color={Colors.primary} />
@@ -91,7 +140,9 @@ export default function DoctorList() {
                 <Text style={styles.stateText}>
                   {deferredSearchQuery
                     ? 'No doctor matches this search.'
-                    : `We did not find doctor records for ${user?.name ?? 'this rep'} yet.`}
+                    : showCompleted
+                      ? 'No doctor has finished their monthly calls yet.'
+                      : `We did not find doctor records for ${user?.name ?? 'this rep'} yet.`}
                 </Text>
               </View>
             ) : null}
@@ -116,9 +167,66 @@ export default function DoctorList() {
 }
 
 const styles = StyleSheet.create({
+  // Roomier gap: the cards are airier now, so they need space to read as cards.
   content: {
     padding: 16,
-    gap: 10,
+    gap: 14,
+  },
+  // Raised on its own surface so it reads as a bar over the list, not a strip
+  // of loose text on the page background.
+  stickyHeader: {
+    gap: 16,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+    borderRadius: 14,
+    backgroundColor: Colors.surface,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+    zIndex: 5,
+  },
+  stickyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  stickyTitleBlock: {
+    flex: 1,
+    minWidth: 0,
+    gap: 5,
+  },
+  stickyTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  stickyTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: Colors.text,
+  },
+  stickySubtitle: {
+    fontSize: 12,
+    color: Colors.textMuted,
+  },
+  stickyCount: {
+    minWidth: 24,
+    alignItems: 'center',
+    borderRadius: 6,
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  stickyCountText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.secondary,
   },
   header: {
     gap: 12,

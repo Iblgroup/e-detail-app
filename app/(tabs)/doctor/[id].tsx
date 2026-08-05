@@ -27,6 +27,11 @@ export default function DoctorDetailScreen() {
     teamId?: string;
     viewOnly?: string;
     callKind?: CallKind;
+    visitCount?: string;
+    maxVisits?: string;
+    visitsChamber?: string;
+    visitsGroup?: string;
+    visitsParking?: string;
   }>();
 
   const getParam = (value: string | string[] | undefined) =>
@@ -52,6 +57,15 @@ export default function DoctorDetailScreen() {
     pmdcNumber: getParam(params.pmdc) || DASH,
     scheduledTime: getParam(params.scheduledTime),
     teamId: Number(getParam(params.teamId)) || undefined,
+    visitCount: Number(getParam(params.visitCount)) || 0,
+    // Absent (unclassified doctor) must stay null, not 0 — 0 would read as a
+    // real quota of zero and hide the circles for the wrong reason.
+    maxVisits: getParam(params.maxVisits)
+      ? Number(getParam(params.maxVisits)) || null
+      : null,
+    visitsChamber: Number(getParam(params.visitsChamber)) || 0,
+    visitsGroup: Number(getParam(params.visitsGroup)) || 0,
+    visitsParking: Number(getParam(params.visitsParking)) || 0,
     history: [],
   };
 

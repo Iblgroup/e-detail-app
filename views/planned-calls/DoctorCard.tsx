@@ -2,7 +2,8 @@ import { Colors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { CompletedCallReport, getCompletedCallReport } from './callCompletionStore';
+import { Tag } from '@/components/tag';
+import { initialsOf } from '@/lib/initials';
 import { CallType, type CallKind } from './callTypes';
 
 export interface Doctor {
@@ -18,8 +19,18 @@ export interface Doctor {
   city?: string;
   /** Date of the rep's last recorded call, or a dash. */
   lastVisit: string;
-  /** doctors.class — A1 / A2 / A3 / A4 ... */
+  /** The doctor's class for this rep — A1 / A2 / A3 / A4 ... */
   doctorClass?: string;
+  /** Completed calls on this doctor this month. */
+  visitCount?: number;
+  /** Calls the class requires this month. Null for an unclassified doctor. */
+  maxVisits?: number | null;
+  /** Server view of the month's quota. */
+  visitStatus?: 'in_progress' | 'completed';
+  /** This month's completed calls, by how they were conducted. */
+  visitsChamber?: number;
+  visitsGroup?: number;
+  visitsParking?: number;
   /** doctors.pmdc registration number. */
   pmdc?: string;
   scheduledTime?: string;
@@ -45,37 +56,39 @@ export function DoctorCard({
 }: DoctorCardProps) {
   const isCompleted = doctor.status === 'completed';
 
-  const getFallbackCompletedReport = (): CompletedCallReport => ({
-    doctorName: doctor.name,
-    durationSeconds: 62,
-    slidesViewed: 3,
-    totalSlides: 3,
-    feedback: 'Doctor responded positively and requested a follow-up discussion.',
-    doctorInterest: 'High',
-    slideTimes: [53, 8, 1],
-    slideLabels: ['Brand 1', 'Brand 2', 'Brand 3'],
-  });
+  const maxVisits = doctor.maxVisits ?? 0;
+  const hasQuota = maxVisits > 0 && Boolean(doctor.doctorClass);
+  const remaining = Math.max(maxVisits - (doctor.visitCount ?? 0), 0);
+  const isCovered = maxVisits > 0 && remaining === 0;
+
+  // The headline status: what's still owed this month, or that it's all done.
+  // An unclassified doctor has no quota, so no pill.
+  const quotaLabel =
+    maxVisits === 0
+      ? null
+      : isCovered
+        ? 'Completed'
+        : `${remaining} visit${remaining === 1 ? '' : 's'} remaining`;
 
   const handlePress = () => {
     const handled = onPress?.(doctor);
     if (handled) return;
 
     if (isCompleted) {
-      const report = getCompletedCallReport(doctor.id, callType) ?? getFallbackCompletedReport();
-
+      // Opened from the list, so no single call is in context — always the
+      // month's combined report. Deliberately carries NO per-call figures: this
+      // session's in-memory report would otherwise leak in and render one call's
+      // numbers under a doctor whose whole month was asked for.
       router.push({
         pathname: '/call-analytics/[id]',
         params: {
           id: doctor.id,
           callType,
-          doctorName: report.doctorName ?? doctor.name,
-          duration: String(report.durationSeconds),
-          slidesViewed: String(report.slidesViewed),
-          totalSlides: String(report.totalSlides),
-          feedback: report.feedback,
-          doctorInterest: report.doctorInterest,
-          slideTimes: report.slideTimes.join(','),
-          slideLabels: JSON.stringify(report.slideLabels ?? []),
+          mode: 'combined',
+          // Scope the report to the tab it was opened from: from Group, it
+          // reports on group calls, not every call this doctor had.
+          callKind,
+          doctorName: doctor.name,
         },
       });
       return;
@@ -99,6 +112,12 @@ export function DoctorCard({
         pmdc: doctor.pmdc,
         scheduledTime: doctor.scheduledTime,
         teamId: doctor.teamId ? String(doctor.teamId) : undefined,
+        // Monthly coverage, so the detail screen can break it down by call kind.
+        visitCount: String(doctor.visitCount ?? 0),
+        maxVisits: doctor.maxVisits != null ? String(doctor.maxVisits) : undefined,
+        visitsChamber: String(doctor.visitsChamber ?? 0),
+        visitsGroup: String(doctor.visitsGroup ?? 0),
+        visitsParking: String(doctor.visitsParking ?? 0),
       },
     });
   };
@@ -106,63 +125,61 @@ export function DoctorCard({
   return (
     <Pressable
       onPress={handlePress}
-      style={({ pressed }) => [
-        styles.card,
-        isCompleted && styles.cardCompleted,
-        pressed && styles.pressed,
-      ]}
+      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
-      <View style={[styles.iconWrapper, isCompleted && styles.iconWrapperCompleted]}>
-        <Ionicons
-          name="pulse-outline"
-          size={22}
-          color={isCompleted ? Colors.success : Colors.primary}
-        />
+      {/* Accent rail — green once the month's calls are all made. */}
+      <View style={[styles.rail, isCompleted && styles.railCompleted]} />
+
+      {/* No photos in this data, so the doctor's initials stand in. */}
+      <View style={[styles.avatar, isCompleted && styles.avatarCompleted]}>
+        <Text style={styles.avatarText}>{initialsOf(doctor.name)}</Text>
       </View>
 
       <View style={styles.info}>
+        {/* Name, with how much of the month's quota is left beside it. */}
         <View style={styles.titleRow}>
-          <Text style={styles.name}>{doctor.name}</Text>
-          {doctor.isNewDoctor || doctor.isNewDoctorPending || doctor.scheduledTime ? (
-            <View style={styles.titleBadges}>
-              {doctor.isNewDoctor || doctor.isNewDoctorPending ? (
-                <View style={styles.newDoctorPill}>
-                  <Text style={styles.newDoctorPillText}>New Doctor</Text>
-                </View>
-              ) : null}
-              {doctor.scheduledTime ? (
-                <View style={styles.timePill}>
-                  <Ionicons name="alarm-outline" size={11} color={Colors.primary} />
-                  <Text style={styles.timePillText}>{doctor.scheduledTime}</Text>
-                </View>
-              ) : null}
-            </View>
+          <Text style={styles.name} numberOfLines={1}>
+            {doctor.name}
+          </Text>
+
+          {quotaLabel ? (
+            <Tag
+              label={quotaLabel}
+              icon={isCovered ? 'checkmark-circle-outline' : 'alert-circle-outline'}
+              tone={isCovered ? 'success' : 'warning'}
+            />
           ) : null}
         </View>
-        <Text style={styles.specialty}>{doctor.specialty}</Text>
-        <View style={[styles.metaRow, isCompleted && styles.metaRowCompleted]}>
+
+        <View style={styles.tagRow}>
+          <Tag label={doctor.specialty} icon="medkit-outline" tone="primary" />
+
+          {doctor.isNewDoctor || doctor.isNewDoctorPending ? (
+            <Tag label="New Doctor" icon="sparkles-outline" tone="warning" />
+          ) : null}
+          {doctor.scheduledTime ? (
+            <Tag label={doctor.scheduledTime} icon="alarm-outline" tone="neutral" />
+          ) : null}
+        </View>
+
+        <View style={styles.footer}>
+          {hasQuota ? (
+            <Tag label={doctor.doctorClass as string} icon="ribbon-outline" tone="neutral" />
+          ) : null}
+
           <View style={styles.metaItem}>
-            <Ionicons name="location-outline" size={12} color={Colors.textMuted} />
-            {/* City on the list row; hospital + address live on the detail screen. */}
-            <Text style={styles.metaText}>{doctor.city || doctor.address}</Text>
+            <Ionicons name="time-outline" size={13} color={Colors.textMuted} />
+            <Text style={styles.metaText} numberOfLines={1}>
+              Last visit: {doctor.lastVisit}
+            </Text>
           </View>
-          <View style={styles.metaItem}>
-            <Ionicons name="time-outline" size={12} color={Colors.textMuted} />
-            <Text style={styles.metaText}>Last visit: {doctor.lastVisit}</Text>
-          </View>
+
+          <View style={styles.spacer} />
+
+          <Text style={styles.viewDetails}>View Details</Text>
         </View>
       </View>
 
-      {isCompleted ? (
-        <View style={styles.completedBadge}>
-          <Ionicons name="checkmark-circle-outline" size={14} color={Colors.success} />
-          <Text style={styles.completedText}>Completed</Text>
-        </View>
-      ) : (
-        <View style={styles.chevron}>
-          <Ionicons name="chevron-forward" size={16} color={Colors.primary} />
-        </View>
-      )}
     </Pressable>
   );
 }
@@ -170,127 +187,98 @@ export function DoctorCard({
 const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 12,
     backgroundColor: Colors.surface,
-    borderRadius: 14,
-    padding: 14,
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.primary,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    borderRadius: 8,
+    paddingRight: 14,
+    paddingVertical: 14,
+    overflow: 'hidden',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
     elevation: 2,
   },
-  cardCompleted: {
-    borderLeftColor: 'transparent',
-  },
   pressed: {
-    opacity: 0.75,
+    opacity: 0.85,
   },
-  iconWrapper: {
+  // Full-height colour bar down the leading edge, as in the reference.
+  rail: {
+    alignSelf: 'stretch',
+    width: 5,
+    marginVertical: -14,
+    backgroundColor: Colors.primary,
+  },
+  railCompleted: {
+    backgroundColor: Colors.success,
+  },
+  avatar: {
     width: 44,
     height: 44,
-    borderRadius: 12,
-    backgroundColor: Colors.primaryLight,
+    borderRadius: 8,
+    backgroundColor: Colors.secondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconWrapperCompleted: {
-    backgroundColor: Colors.successBg,
+  avatarCompleted: {
+    backgroundColor: Colors.success,
+  },
+  avatarText: {
+    color: Colors.textOnDark,
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   info: {
     flex: 1,
-    gap: 3,
+    minWidth: 0,
+    gap: 8,
   },
   titleRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: 10,
   },
-  titleBadges: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
-    gap: 6,
-  },
   name: {
+    flex: 1,
     fontSize: 16,
     fontWeight: '700',
+    letterSpacing: -0.2,
     color: Colors.text,
-    flex: 1,
   },
-  newDoctorPill: {
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: '#FEF3C7',
-  },
-  newDoctorPillText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#B45309',
-  },
-  timePill: {
+  tagRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    backgroundColor: Colors.primaryLight,
-  },
-  timePillText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-  specialty: {
-    fontSize: 14,
-    color: Colors.primary,
-    fontWeight: '500',
-  },
-  metaRow: {
-    flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 4,
+    gap: 6,
   },
-  metaRowCompleted: {
-    flexWrap: 'nowrap',
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    rowGap: 8,
+    columnGap: 10,
+    marginTop: 2,
+  },
+  // Pushes "View Details" to the trailing edge without a fixed width.
+  spacer: {
+    flex: 1,
+    minWidth: 8,
   },
   metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
   },
   metaText: {
     fontSize: 13,
     color: Colors.textMuted,
   },
-  chevron: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: Colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  completedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 4,
-    borderRadius: 10,
-    backgroundColor: Colors.successBg,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  completedText: {
-    color: Colors.success,
+  viewDetails: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: Colors.primary,
   },
 });

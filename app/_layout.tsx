@@ -5,6 +5,8 @@ import 'react-native-reanimated';
 import { TamaguiProvider } from '@tamagui/core';
 import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useFonts } from 'expo-font';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
@@ -14,7 +16,11 @@ import { SyncProvider } from '@/providers/SyncProvider';
 import { OutboxProvider } from '@/providers/OutboxProvider';
 import { SyncGate } from '@/components/ui/SyncGate';
 import { registerBackgroundSync } from '@/lib/offline/backgroundSync';
+import { AppFonts, applyAppFont } from '@/lib/typography';
 import config from '../tamagui.config';
+
+// Patch Text/TextInput once, before any screen renders.
+applyAppFont();
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -65,31 +71,49 @@ function AuthGate() {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const [fontsLoaded] = useFonts(AppFonts);
 
   // Register the unattended overnight sync (best-effort; OS-scheduled).
   useEffect(() => {
     void registerBackgroundSync();
   }, []);
 
+  // Hold the first paint until Inter is ready, so text doesn't reflow from the
+  // system font a frame later.
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.loadingShell}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
   return (
-    <AppQueryProvider>
-      <AuthProvider>
-        <OutboxProvider>
-          <SyncProvider>
-            <TamaguiProvider config={config} defaultTheme={colorScheme === 'dark' ? 'dark' : 'light'}>
-              <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-                <AuthGate />
-                <StatusBar style="auto" />
-              </ThemeProvider>
-            </TamaguiProvider>
-          </SyncProvider>
-        </OutboxProvider>
-      </AuthProvider>
-    </AppQueryProvider>
+    // Required for react-native-gesture-handler: without it, the carousel's
+    // swipe gestures (call slides and Content Viewing) do nothing on Android.
+    <GestureHandlerRootView style={styles.root}>
+      <AppQueryProvider>
+        <AuthProvider>
+          <OutboxProvider>
+            <SyncProvider>
+              <TamaguiProvider config={config} defaultTheme={colorScheme === 'dark' ? 'dark' : 'light'}>
+                <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+                  <AuthGate />
+                  <StatusBar style="auto" />
+                </ThemeProvider>
+              </TamaguiProvider>
+            </SyncProvider>
+          </OutboxProvider>
+        </AuthProvider>
+      </AppQueryProvider>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   loadingShell: {
     flex: 1,
     alignItems: 'center',

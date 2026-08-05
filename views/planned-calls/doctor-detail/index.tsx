@@ -13,6 +13,7 @@ import { CallCompletedCard } from './CallCompletedCard';
 import { CancelCallButton } from './CancelCallButton';
 import { CancelCallModal } from './CancelCallModal';
 import { DoctorDetailHeader } from './DoctorDetailHeader';
+import { MonthlyCoverageCard } from './MonthlyCoverageCard';
 // PlannedCallsCard hidden for now; the item type is still used by DoctorDetailData.
 import { PlannedCallItem } from './PlannedCallsCard';
 import { ProfessionalDetailsCard } from './ProfessionalDetailsCard';
@@ -33,12 +34,18 @@ export interface DoctorDetailData {
   city: string;
   /** Rep's last recorded call for this doctor (call_tracking), or a dash. */
   lastVisit: string;
-  /** doctors.class — A1 / A2 / A3 / A4 ... */
+  /** The doctor's class for this rep — A1 / A2 / A3 / A4 ... */
   doctorClass: string;
   /** doctors.pmdc */
   pmdcNumber: string;
   scheduledTime?: string;
   teamId?: number;
+  /** This month's coverage: completed calls, the class quota, and the split. */
+  visitCount?: number;
+  maxVisits?: number | null;
+  visitsChamber?: number;
+  visitsGroup?: number;
+  visitsParking?: number;
   history: HistoryItem[];
   plannedCalls?: PlannedCallItem[];
 }
@@ -143,6 +150,14 @@ export default function DoctorDetail({
           lastVisit={doctor.lastVisit}
           doctorClass={doctor.doctorClass}
           pmdcNumber={doctor.pmdcNumber}
+        />
+
+        <MonthlyCoverageCard
+          visitCount={doctor.visitCount ?? 0}
+          maxVisits={doctor.maxVisits}
+          chamber={doctor.visitsChamber ?? 0}
+          group={doctor.visitsGroup ?? 0}
+          parking={doctor.visitsParking ?? 0}
         />
 
         {/* Planned Calls card hidden for now (placeholder schedule data). */}

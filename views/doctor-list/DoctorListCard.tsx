@@ -2,30 +2,62 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Tag } from '@/components/tag';
 import { Colors } from '@/constants/theme';
+import { initialsOf } from '@/lib/initials';
 import { DASH } from '@/views/planned-calls/mapDoctor';
 import type { Doctor } from '@/views/planned-calls/DoctorCard';
+import { VisitProgress } from '@/views/planned-calls/VisitProgress';
 
 interface DoctorListCardProps {
   doctor: Doctor;
 }
 
-/** Up to two initials for the avatar, e.g. "ABDUL GHAFOOR" → "AG". */
-function initialsOf(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '?';
-  return `${parts[0][0]}${parts.length > 1 ? parts[parts.length - 1][0] : ''}`.toUpperCase();
+/** Thin rule between inline facts. */
+function Divider() {
+  return <View style={styles.divider} />;
+}
+
+function hasValue(value?: string) {
+  return Boolean(value) && value !== DASH;
+}
+
+/** One icon + value pair in the footer strip. */
+function MetaItem({
+  icon,
+  value,
+  highlighted = false,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  value?: string;
+  /** Brand-coloured — used for the PMDC number reps look up most. */
+  highlighted?: boolean;
+}) {
+  return (
+    <View style={styles.metaItem}>
+      <Ionicons
+        name={icon}
+        size={13}
+        color={highlighted ? Colors.primary : Colors.textMuted}
+      />
+      <Text style={[styles.meta, highlighted && styles.metaHighlighted]} numberOfLines={1}>
+        {value}
+      </Text>
+    </View>
+  );
 }
 
 /**
- * A doctor in the reference book. Deliberately styled apart from
- * `DoctorCard` (the Call Reporting row) — an initials avatar, the doctor's
- * class and PMDC on show, and no call affordance — so the two lists never read
- * as the same screen. Opens the detail in view-only mode.
+ * A doctor in the reference book: an initials avatar, then
+ *   name                              · this month's visit circles
+ *   specialty | class
+ *   location  | PMDC | last visit
+ * Calls are made from Call Reporting, so the only action here is opening the
+ * record.
  */
 export function DoctorListCard({ doctor }: DoctorListCardProps) {
-  const hasClass = Boolean(doctor.doctorClass) && doctor.doctorClass !== DASH;
-  const hasPmdc = Boolean(doctor.pmdc) && doctor.pmdc !== DASH;
+  const maxVisits = doctor.maxVisits ?? 0;
+  const done = Math.min(Math.max(doctor.visitCount ?? 0, 0), maxVisits);
 
   const openDetail = () => {
     router.push({
@@ -43,6 +75,12 @@ export function DoctorListCard({ doctor }: DoctorListCardProps) {
         doctorClass: doctor.doctorClass,
         pmdc: doctor.pmdc,
         teamId: doctor.teamId ? String(doctor.teamId) : undefined,
+        // Monthly coverage, so the detail screen can break it down by call kind.
+        visitCount: String(doctor.visitCount ?? 0),
+        maxVisits: doctor.maxVisits != null ? String(doctor.maxVisits) : undefined,
+        visitsChamber: String(doctor.visitsChamber ?? 0),
+        visitsGroup: String(doctor.visitsGroup ?? 0),
+        visitsParking: String(doctor.visitsParking ?? 0),
       },
     });
   };
@@ -52,49 +90,51 @@ export function DoctorListCard({ doctor }: DoctorListCardProps) {
       onPress={openDetail}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
-      <View style={styles.topRow}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initialsOf(doctor.name)}</Text>
-        </View>
-
-        <View style={styles.titleBlock}>
-          <Text style={styles.name} numberOfLines={2}>
-            {doctor.name}
-          </Text>
-          <View style={styles.specialtyChip}>
-            <Text style={styles.specialtyText} numberOfLines={1}>
-              {doctor.specialty}
-            </Text>
-          </View>
-        </View>
-
-        {hasClass ? (
-          <View style={styles.classPill}>
-            <Text style={styles.classPillText}>{doctor.doctorClass}</Text>
-          </View>
-        ) : null}
+      <View style={styles.avatar}>
+        <Text style={styles.avatarText}>{initialsOf(doctor.name)}</Text>
       </View>
 
-      <View style={styles.metaRow}>
-        <View style={styles.metaItem}>
-          <Ionicons name="business-outline" size={13} color={Colors.textMuted} />
-          <Text style={styles.metaText} numberOfLines={1}>
-            {doctor.city || doctor.address || DASH}
+      <View style={styles.content}>
+        {/* Name, with the month's visit circles opposite it. */}
+        <View style={styles.nameRow}>
+          <Text style={styles.name} numberOfLines={1}>
+            {doctor.name}
           </Text>
+          <VisitProgress visitCount={done} maxVisits={maxVisits} showCount={false} />
         </View>
-        {hasPmdc ? (
-          <View style={styles.metaItem}>
-            <Ionicons name="card-outline" size={13} color={Colors.textMuted} />
-            <Text style={styles.metaText} numberOfLines={1}>
-              PMDC {doctor.pmdc}
-            </Text>
+
+        {/* Specialty and class, each as its own tag. */}
+        <View style={styles.tagRow}>
+          <Tag label={doctor.specialty} icon="medkit-outline" tone="primary" />
+          {hasValue(doctor.doctorClass) ? (
+            <Tag
+              label={doctor.doctorClass as string}
+              icon="ribbon-outline"
+              tone="neutral"
+            />
+          ) : null}
+        </View>
+
+        {/* Location | PMDC | last visit, with the arrow kept on the right. */}
+        <View style={styles.footer}>
+          <View style={styles.metaRow}>
+            <MetaItem
+              icon="location-outline"
+              value={doctor.city || doctor.address || DASH}
+            />
+
+            {hasValue(doctor.pmdc) ? (
+              <>
+                <Divider />
+                <MetaItem icon="card-outline" value={doctor.pmdc} highlighted />
+              </>
+            ) : null}
+
+            <Divider />
+            <MetaItem icon="time-outline" value={doctor.lastVisit} />
           </View>
-        ) : null}
-        <View style={styles.metaItem}>
-          <Ionicons name="time-outline" size={13} color={Colors.textMuted} />
-          <Text style={styles.metaText} numberOfLines={1}>
-            Last visit: {doctor.lastVisit}
-          </Text>
+
+          <Ionicons name="arrow-forward" size={17} color={Colors.primary} />
         </View>
       </View>
     </Pressable>
@@ -103,25 +143,27 @@ export function DoctorListCard({ doctor }: DoctorListCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.surface,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: 14,
-    gap: 12,
-  },
-  pressed: {
-    opacity: 0.75,
-  },
-  topRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
+    backgroundColor: Colors.surface,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  pressed: {
+    opacity: 0.9,
   },
   avatar: {
     width: 46,
     height: 46,
-    borderRadius: 14,
+    // Matches the card so the inner box is never rounder than its container.
+    borderRadius: 8,
     backgroundColor: Colors.secondary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -132,60 +174,63 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.5,
   },
-  titleBlock: {
+  content: {
     flex: 1,
-    gap: 6,
+    minWidth: 0,
+    gap: 8,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 14,
   },
   name: {
-    fontSize: 15,
+    flex: 1,
+    fontSize: 17,
     fontWeight: '700',
+    letterSpacing: -0.2,
     color: Colors.text,
   },
-  specialtyChip: {
-    alignSelf: 'flex-start',
-    backgroundColor: Colors.primaryLight,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    maxWidth: '100%',
-  },
-  specialtyText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.secondary,
-  },
-  classPill: {
-    minWidth: 34,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.background,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+  tagRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
   },
-  classPillText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: Colors.primary,
+  divider: {
+    width: 1,
+    height: 12,
+    backgroundColor: Colors.border,
+  },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 2,
   },
   metaRow: {
+    flex: 1,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    rowGap: 6,
-    columnGap: 14,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    paddingTop: 10,
+    alignItems: 'center',
+    gap: 10,
   },
   metaItem: {
+    flexShrink: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
   },
-  metaText: {
-    fontSize: 12,
+  meta: {
+    flexShrink: 1,
+    fontSize: 13,
     fontWeight: '500',
     color: Colors.textMuted,
+  },
+  // The registration number is what reps look up most — brand-coloured.
+  metaHighlighted: {
+    fontWeight: '700',
+    color: Colors.primary,
   },
 });

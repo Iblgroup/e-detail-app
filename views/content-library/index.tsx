@@ -1,5 +1,12 @@
 import { useDeferredValue, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 
 import { useTeamBrands, type TeamBrand } from '@/api/content';
 import { AppSearchInput } from '@/components/ui/AppSearchInput';
@@ -15,9 +22,13 @@ import { BrandCard } from './BrandCard';
  */
 export default function ContentLibrary() {
   const { user } = useAuth();
+  const { width } = useWindowDimensions();
   const [searchQuery, setSearchQuery] = useState('');
   const deferredSearchQuery = useDeferredValue(searchQuery.trim());
   const brandsQuery = useTeamBrands(user?.teamId);
+
+  // Three tiles across on a tablet/desktop, down to one on a phone.
+  const columns = width >= 1000 ? 3 : width >= 640 ? 2 : 1;
 
   const brands = useMemo<TeamBrand[]>(() => {
     const all = brandsQuery.data ?? [];
@@ -42,12 +53,27 @@ export default function ContentLibrary() {
     [brands]
   );
 
+  // Tiles flex to fill their column, so a half-empty last row would stretch one
+  // card across the grid. Pad it out with invisible spacers instead.
+  const gridItems = useMemo<(TeamBrand | null)[]>(() => {
+    if (columns === 1 || brands.length === 0) return brands;
+    const remainder = brands.length % columns;
+    if (remainder === 0) return brands;
+    return [...brands, ...Array<null>(columns - remainder).fill(null)];
+  }, [brands, columns]);
+
   return (
     <ScreenLayout title="Content Viewing" subtitle={user?.team} scrollable={false} showBack>
       <FlatList
-        data={brands}
-        keyExtractor={(brand) => brand.brandName}
-        renderItem={({ item }) => <BrandCard brand={item} />}
+        // Changing numColumns needs a fresh list instance.
+        key={`columns-${columns}`}
+        data={gridItems}
+        keyExtractor={(brand, position) => brand?.brandName ?? `spacer-${position}`}
+        renderItem={({ item }) =>
+          item ? <BrandCard brand={item} /> : <View style={styles.spacer} />
+        }
+        numColumns={columns}
+        columnWrapperStyle={columns > 1 ? styles.row : undefined}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
@@ -104,7 +130,13 @@ export default function ContentLibrary() {
 const styles = StyleSheet.create({
   content: {
     padding: 16,
-    gap: 10,
+    gap: 12,
+  },
+  row: {
+    gap: 12,
+  },
+  spacer: {
+    flex: 1,
   },
   header: {
     gap: 12,
