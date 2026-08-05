@@ -1,5 +1,5 @@
-import { AppButton } from '@/components/ui/AppButton';
 import { AppBottomSheetSelect } from '@/components/ui/AppBottomSheetSelect';
+import { AppButton } from '@/components/ui/AppButton';
 import { AppMultiSelectSheet, MultiSelectOption } from '@/components/ui/AppMultiSelectSheet';
 import { Colors } from '@/constants/theme';
 import { useMemo, useState } from 'react';
@@ -33,6 +33,8 @@ interface CallSummaryModalProps {
   // attendee. Otherwise it's a single-doctor picker (walking calls).
   multiDoctor?: boolean;
   doctorOptions?: string[];
+  /** Shown when the picker has nothing to offer. */
+  doctorsEmptyText?: string;
   onCancel: () => void;
   onSubmit: (summary: CallSummaryData) => void;
 }
@@ -69,6 +71,7 @@ export function CallSummaryModal({
   requireDoctor = false,
   multiDoctor = false,
   doctorOptions = [],
+  doctorsEmptyText = 'No doctors available for this team.',
   onCancel,
   onSubmit,
 }: CallSummaryModalProps) {
@@ -174,7 +177,7 @@ export function CallSummaryModal({
                     values={selectedDoctors}
                     onChange={setSelectedDoctors}
                     searchable
-                    emptyText="No doctors available for this team."
+                    emptyText={doctorsEmptyText}
                   />
                 ) : (
                   <AppBottomSheetSelect
@@ -184,7 +187,7 @@ export function CallSummaryModal({
                     value={selectedDoctor}
                     onChange={setSelectedDoctor}
                     searchable
-                    emptyText="No doctors available for this team."
+                    emptyText={doctorsEmptyText}
                   />
                 )}
                 {!doctorHasSelection ? (
@@ -313,7 +316,7 @@ export function CallSummaryModal({
               textStyle={styles.cancelText}
             />
             <AppButton
-              label="Submit Call"
+              label="Submit"
               onPress={() => {
                 if (!canSubmit) return;
                 onSubmit({

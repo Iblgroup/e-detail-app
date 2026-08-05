@@ -134,7 +134,10 @@ export function DoctorListCard({ doctor }: DoctorListCardProps) {
             <MetaItem icon="time-outline" value={doctor.lastVisit} />
           </View>
 
-          <Ionicons name="arrow-forward" size={17} color={Colors.primary} />
+          <View style={styles.action}>
+            <Text style={styles.actionText}>Details</Text>
+            <Ionicons name="arrow-forward" size={15} color={Colors.primary} />
+          </View>
         </View>
       </View>
     </Pressable>
@@ -230,6 +233,16 @@ const styles = StyleSheet.create({
   },
   // The registration number is what reps look up most — brand-coloured.
   metaHighlighted: {
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  action: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  actionText: {
+    fontSize: 13,
     fontWeight: '700',
     color: Colors.primary,
   },

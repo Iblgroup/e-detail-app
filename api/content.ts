@@ -38,21 +38,28 @@ export interface Specialty {
   specialty_name: string;
 }
 
-export const specialtiesKey = ['specialties'] as const;
+export const specialtiesKey = (mieId?: string) =>
+  ['specialties', mieId ?? 'all'] as const;
 
-export const getSpecialties = async (): Promise<Specialty[]> => {
-  const res = (await axios.get(ApiEndpoints.specialties)) as unknown as {
+export const getSpecialties = async (mieId?: string): Promise<Specialty[]> => {
+  const res = (await axios.get(ApiEndpoints.specialties, {
+    params: mieId ? { mieId } : undefined,
+  })) as unknown as {
     success: boolean;
     data: Specialty[];
   };
   return res.data ?? [];
 };
 
-// All specialties for the institution-call picker (cached + offline-persisted).
-export const useSpecialties = () => {
+/**
+ * Specialties for the institution-call picker (cached + offline-persisted).
+ * Pass the rep's mieId to get only the specialties they hold doctors for —
+ * choosing one they carry none of would leave the End-of-call picker empty.
+ */
+export const useSpecialties = (mieId?: string) => {
   return useQuery({
-    queryKey: specialtiesKey,
-    queryFn: getSpecialties,
+    queryKey: specialtiesKey(mieId),
+    queryFn: () => getSpecialties(mieId),
     staleTime: 30 * 60 * 1000,
   });
 };

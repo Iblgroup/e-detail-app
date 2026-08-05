@@ -9,6 +9,7 @@ export default function CallScreenRoute() {
     doctorName,
     returnToNewDoctor,
     specialtyId,
+    specialtyName,
     teamId,
     institution,
     callKind,
@@ -22,6 +23,7 @@ export default function CallScreenRoute() {
     doctorName?: string;
     returnToNewDoctor?: string;
     specialtyId?: string;
+    specialtyName?: string;
     teamId?: string;
     institution?: string;
     callKind?: CallKind;
@@ -48,6 +50,7 @@ export default function CallScreenRoute() {
       doctorName={normalizedDoctorName}
       returnToNewDoctor={shouldReturnToNewDoctor}
       specialtyId={normalizedSpecialtyId}
+      specialtyName={getParam(specialtyName)}
       teamId={normalizedTeamId}
       institutionType={normalizedInstitution}
       callKind={getParam(callKind) as CallKind | undefined}

@@ -13,6 +13,7 @@ import { CallCompletedCard } from './CallCompletedCard';
 import { CancelCallButton } from './CancelCallButton';
 import { CancelCallModal } from './CancelCallModal';
 import { DoctorDetailHeader } from './DoctorDetailHeader';
+import { MonthlyCallSummary } from '../call-analytics/MonthlyCallSummary';
 import { MonthlyCoverageCard } from './MonthlyCoverageCard';
 // PlannedCallsCard hidden for now; the item type is still used by DoctorDetailData.
 import { PlannedCallItem } from './PlannedCallsCard';
@@ -159,6 +160,12 @@ export default function DoctorDetail({
           group={doctor.visitsGroup ?? 0}
           parking={doctor.visitsParking ?? 0}
         />
+
+        {/* Once the doctor has been called, the record itself: every call this
+            month combined — brands, SKUs, where the time went. */}
+        {(doctor.visitCount ?? 0) > 0 ? (
+          <MonthlyCallSummary mieId={user?.mieId} doctorId={doctor.id} />
+        ) : null}
 
         {/* Planned Calls card hidden for now (placeholder schedule data). */}
 

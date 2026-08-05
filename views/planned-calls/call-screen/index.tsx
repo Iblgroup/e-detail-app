@@ -55,6 +55,8 @@ interface CallScreenProps {
   doctorName?: string;
   returnToNewDoctor?: boolean;
   specialtyId?: number;
+  /** Label for that specialty, used in the doctor picker's empty state. */
+  specialtyName?: string;
   teamId?: number;
   // Institution call type ('group'); when set, the summary requires picking the
   // doctor(s) from the team, and forcing is resolved by specialty rather than by
@@ -123,6 +125,7 @@ export default function CallScreen({
   doctorName,
   returnToNewDoctor = false,
   specialtyId,
+  specialtyName,
   teamId,
   institutionType,
   callKind,
@@ -170,16 +173,26 @@ export default function CallScreen({
     () => plannedDoctorsQuery.data?.pages.flatMap((page) => page.data) ?? [],
     [plannedDoctorsQuery.data?.pages],
   );
-  // Summary doctor picker = only the rep's assigned doctors.
+  /**
+   * Summary doctor picker = the rep's assigned doctors.
+   *
+   * A GROUP call is set up against one specialty, and its forcing content was
+   * chosen for that specialty — so the doctors offered at the End of the call
+   * are limited to the ones who hold it. Anything else would record a doctor as
+   * having seen content meant for a different specialty.
+   */
   const doctorOptions = useMemo(() => {
+    const rows =
+      isInstitutionCall && specialtyId
+        ? plannedRows.filter((row) => Number(row.SpecialtyId) === Number(specialtyId))
+        : plannedRows;
+
     return [
       ...new Set(
-        plannedRows
-          .map((row) => String(row.DOCTORNAME ?? '').trim())
-          .filter(Boolean)
+        rows.map((row) => String(row.DOCTORNAME ?? '').trim()).filter(Boolean)
       ),
     ].sort((a, b) => a.localeCompare(b));
-  }, [plannedRows]);
+  }, [plannedRows, isInstitutionCall, specialtyId]);
   // Resolve a doctor row by id (planned/known calls) or by name (institution
   // calls where the doctor is chosen in the summary). Built from the rep's
   // assigned doctors AND the team pool, so any picked/known doctor resolves.
@@ -593,6 +606,11 @@ export default function CallScreen({
         requireDoctor={isInstitutionCall}
         multiDoctor={isGroupCall}
         doctorOptions={doctorOptions}
+        doctorsEmptyText={
+          isInstitutionCall && specialtyName
+            ? `No assigned doctors with the ${specialtyName} specialty.`
+            : 'No doctors available for this team.'
+        }
         onCancel={() => setIsSummaryVisible(false)}
         onSubmit={handleSubmitSummary}
       />

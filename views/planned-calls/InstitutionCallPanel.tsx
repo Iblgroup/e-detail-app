@@ -23,8 +23,10 @@ export function InstitutionCallPanel() {
   const [isCancelVisible, setIsCancelVisible] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
 
-  // Forcing for an institution call is driven by the chosen specialty.
-  const specialtiesQuery = useSpecialties();
+  // Forcing for an institution call is driven by the chosen specialty. Only the
+  // ones this rep has doctors for — the rest would offer nothing to pick at the
+  // End of the call.
+  const specialtiesQuery = useSpecialties(user?.mieId ? String(user.mieId) : undefined);
   const specialties = useMemo(() => specialtiesQuery.data ?? [], [specialtiesQuery.data]);
   const [selectedSpecialtyName, setSelectedSpecialtyName] = useState('');
   const specialtyOptions = useMemo(
@@ -91,6 +93,9 @@ export function InstitutionCallPanel() {
         doctorName: 'Group Call',
         teamId: user?.teamId ? String(user.teamId) : undefined,
         specialtyId: selectedSpecialty ? String(selectedSpecialty.specialty_id) : undefined,
+        // Carried through so the End-of-call doctor picker can say which
+        // specialty it is limited to.
+        specialtyName: selectedSpecialty?.specialty_name,
         institution: 'group',
         latitude: arrival?.latitude != null ? String(arrival.latitude) : undefined,
         longitude: arrival?.longitude != null ? String(arrival.longitude) : undefined,
