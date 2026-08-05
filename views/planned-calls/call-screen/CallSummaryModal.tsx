@@ -37,7 +37,9 @@ interface CallSummaryModalProps {
   onSubmit: (summary: CallSummaryData) => void;
 }
 
-const JOINT_CALL_OPTIONS = ['No', 'NSM', 'HOS', 'SM', 'RM'];
+// Ordered from the rep's own manager upward (RM → SM → HOS → NSM), so the most
+// common companions come first. 'No' stays first as the default.
+const JOINT_CALL_OPTIONS = ['No', 'RM', 'SM', 'HOS', 'NSM'];
 // const DOCTOR_INTEREST_OPTIONS = ['High', 'Medium', 'Low'] as const; // hidden for now
 const QUICK_FEEDBACK_OPTIONS = [
   'Interested',
