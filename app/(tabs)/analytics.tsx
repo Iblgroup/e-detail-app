@@ -1,4 +1,4 @@
-import { AppBarChart, BarChartDataPoint } from '@/components/ui/AppBarChart';
+import { AppColumnChart, ColumnChartPoint } from '@/components/ui/AppColumnChart';
 import { AppCalendarSheet } from '@/components/ui/AppCalendarSheet';
 import { AppButton } from '@/components/ui/AppButton';
 import { AppChartCard } from '@/components/ui/AppChartCard';
@@ -21,7 +21,7 @@ const callVolumeData: LineChartDataPoint[] = [
   { label: 'Jun', value: 66 },
 ];
 
-const specialtyData: BarChartDataPoint[] = [
+const specialtyData: ColumnChartPoint[] = [
   { label: 'Cardio', value: 45 },
   { label: 'Neuro', value: 32 },
   { label: 'GP', value: 28 },
@@ -214,12 +214,13 @@ export default function AnalyticsScreen() {
           chartWrapperStyle={styles.barChartWrapper}
           style={styles.chartCard}
         >
-            <AppBarChart
-              data={specialtyData}
-              barColor={Colors.primary}
+            <AppColumnChart
+              data={specialtyData.map((point) => ({
+                label: point.label,
+                value: point.value,
+                topLabel: String(point.value),
+              }))}
               height={210}
-              maxValue={60}
-              showYAxis
             />
         </AppChartCard>
       </View>

@@ -1,4 +1,5 @@
-import { AppBarChart, BarChartDataPoint } from '@/components/ui/AppBarChart';
+import { AppColumnChart } from '@/components/ui/AppColumnChart';
+import type { BarChartDataPoint } from '@/components/ui/AppBarChart';
 import { AppChartCard } from '@/components/ui/AppChartCard';
 import { Colors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -165,14 +166,13 @@ export function MonthlyPerformanceCard({
         </View>
       }
     >
-      <AppBarChart
-        data={activePeriod.data}
-        barColor={Colors.primary}
+      <AppColumnChart
+        data={activePeriod.data.map((item) => ({
+          label: item.label,
+          value: item.value,
+          topLabel: item.valueLabel ?? String(item.value),
+        }))}
         height={144}
-        maxValue={Math.max(...activePeriod.data.map((item) => item.value), 1)}
-        showGrid
-        showValueLabels
-        valueFormatter={(value) => `${value}`}
       />
     </AppChartCard>
   );
