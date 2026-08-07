@@ -47,11 +47,12 @@ const QUICK_FEEDBACK_OPTIONS = [
   'Interested',
   'Need Follow-up',
   'Asked for Samples',
-  'Requested Literature',
   'Price Concern',
   'Competitor Mentioned',
   'Next Visit Planned',
-  'Not Interested',
+  'Prescribing Other Brands',
+  'Plan Camp',
+  'Requested for Activity',
 ] as const;
 
 function formatDuration(seconds: number) {

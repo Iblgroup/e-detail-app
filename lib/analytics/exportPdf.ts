@@ -4,15 +4,27 @@ import { Platform } from 'react-native';
 export interface AnalyticsMetric {
   label: string;
   value: string;
-  change: string;
-  tone: 'positive' | 'negative';
+  /** The figure printed under the value. Omitted when there is none. */
+  change?: string;
+  tone: 'positive' | 'negative' | 'neutral';
+}
+
+/** One bar of a breakdown. `value` sizes the bar; `display` is what's printed. */
+export interface BreakdownRow {
+  name: string;
+  value: number;
+  display: string;
 }
 
 export interface AnalyticsReportData {
   dateLabel: string;
+  /** Which view was exported — 'Call Performance' / 'Sales Performance'. */
+  viewLabel: string;
   metrics: readonly AnalyticsMetric[];
-  rfi: { planned: number; completed: number };
-  specialty: { label: string; value: number }[];
+  /** The headline two-stat block: this month against the one before. */
+  monthly: { title: string; thisMonth: string; previousMonth: string };
+  /** Titled runs of bars, printed in order. */
+  breakdowns: { title: string; rows: BreakdownRow[] }[];
 }
 
 type RGB = [number, number, number];
@@ -85,7 +97,7 @@ function buildDoc(data: AnalyticsReportData) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10.5);
   doc.setTextColor(...MUTED);
-  doc.text('Field performance metrics', margin, y + 7);
+  doc.text(data.viewLabel, margin, y + 7);
 
   // Right-aligned period block.
   doc.setFont('helvetica', 'bold');
@@ -130,119 +142,111 @@ function buildDoc(data: AnalyticsReportData) {
     doc.setTextColor(...INK);
     doc.text(metric.value, x + 5, y + 20);
 
-    // change — subtle colored text, no pill
-    const positive = metric.tone === 'positive';
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(...(positive ? GREEN : RED));
-    const arrow = positive ? '+' : '';
-    const changeText = metric.change.startsWith('+') || metric.change.startsWith('-')
-      ? metric.change
-      : `${arrow}${metric.change}`;
-    doc.text(changeText, x + 5, y + 26);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
-    doc.setTextColor(...FAINT);
-    doc.text('vs prev.', x + 5 + doc.getTextWidth(changeText) + 2, y + 26);
+    // change — subtle colored text, no pill. Metrics carrying no figure simply
+    // leave this line off. A 'neutral' one is progress through a target rather
+    // than a movement, so it gets no +/- sign and no "vs prev." caption.
+    if (metric.change) {
+      const neutral = metric.tone === 'neutral';
+      const positive = metric.tone === 'positive';
+      const signed =
+        metric.change.startsWith('+') || metric.change.startsWith('-');
+      const changeText =
+        neutral || signed
+          ? metric.change
+          : `${positive ? '+' : ''}${metric.change}`;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(...(neutral ? NAVY : positive ? GREEN : RED));
+      doc.text(changeText, x + 5, y + 26);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(...FAINT);
+      doc.text(
+        neutral ? 'of plan' : 'vs prev.',
+        x + 5 + doc.getTextWidth(changeText) + 2,
+        y + 26,
+      );
+    }
   });
 
   y += boxH + 16;
 
-  // ---- Call completion (RFI) ----
-  sectionHeader(doc, margin, y, right, 'Call Completion');
+  // ---- This month vs last ----
+  sectionHeader(doc, margin, y, right, data.monthly.title);
   y += 10;
-
-  const completion =
-    data.rfi.planned > 0
-      ? Math.round((data.rfi.completed / data.rfi.planned) * 100)
-      : 0;
-  const outstanding = Math.max(0, data.rfi.planned - data.rfi.completed);
 
   // Two typographic stats with a hairline divider between.
   const half = contentWidth / 2;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7);
   doc.setTextColor(...MUTED);
-  tracked(doc, 'PLANNED', margin, y, { space: 0.6 });
-  tracked(doc, 'COMPLETED', margin + half + 6, y, { space: 0.6 });
+  tracked(doc, 'THIS MONTH', margin, y, { space: 0.6 });
+  tracked(doc, 'PREVIOUS MONTH', margin + half + 6, y, { space: 0.6 });
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(26);
-  doc.setTextColor(...INK);
-  doc.text(String(data.rfi.planned), margin, y + 11);
+  doc.setFontSize(22);
   doc.setTextColor(...NAVY);
-  doc.text(String(data.rfi.completed), margin + half + 6, y + 11);
+  doc.text(data.monthly.thisMonth, margin, y + 11);
+  doc.setTextColor(...INK);
+  doc.text(data.monthly.previousMonth, margin + half + 6, y + 11);
 
   // vertical divider
   doc.setDrawColor(...HAIRLINE);
   doc.setLineWidth(0.3);
   doc.line(margin + half - 4, y - 2, margin + half - 4, y + 13);
 
-  y += 20;
+  y += 24;
 
-  // Progress
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(...MUTED);
-  doc.text('Completion Progress', margin, y);
-  doc.setTextColor(...INK);
-  doc.setFontSize(10);
-  doc.text(`${completion}%`, right, y, { align: 'right' });
-  y += 3;
-
-  const trackH = 3;
-  doc.setFillColor(...TRACK);
-  doc.roundedRect(margin, y, contentWidth, trackH, 1.5, 1.5, 'F');
-  const fillW = (contentWidth * completion) / 100;
-  if (fillW > 0) {
-    doc.setFillColor(...NAVY);
-    doc.roundedRect(margin, y, Math.max(fillW, 2), trackH, 1.5, 1.5, 'F');
-  }
-  y += trackH + 5;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.setTextColor(...MUTED);
-  doc.text(
-    `${data.rfi.completed} of ${data.rfi.planned} planned calls completed   ·   ${outstanding} remaining`,
-    margin,
-    y,
-  );
-
-  y += 16;
-
-  // ---- Specialty distribution (horizontal bars, single accent) ----
-  sectionHeader(doc, margin, y, right, 'Specialty Distribution');
-  y += 11;
-
-  const maxValue = Math.max(1, ...data.specialty.map((item) => item.value));
-  const labelW = 26;
-  const valueW = 12;
+  // ---- Engagement breakdowns (horizontal bars, single accent) ----
+  const labelW = 42;
+  const valueW = 16;
   const barX = margin + labelW;
   const barMaxW = contentWidth - labelW - valueW;
   const rowH = 11;
   const barH = 5;
 
-  data.specialty.forEach((item, index) => {
-    const rowY = y + index * rowH;
+  /** One titled run of bars; returns the y to carry on from. */
+  const breakdown = (title: string, rows: BreakdownRow[], top: number) => {
+    sectionHeader(doc, margin, top, right, title);
+    let rowTop = top + 11;
 
-    // label
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9.5);
-    doc.setTextColor(...INK);
-    doc.text(item.label, margin, rowY + barH - 0.6);
+    if (rows.length === 0) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(...MUTED);
+      doc.text('No calls recorded this month.', margin, rowTop + 2);
+      return rowTop + 10;
+    }
 
-    // track + bar (single refined navy, subtle)
-    doc.setFillColor(...TRACK);
-    doc.roundedRect(barX, rowY, barMaxW, barH, 1.5, 1.5, 'F');
-    const w = Math.max(2, (barMaxW * item.value) / maxValue);
-    doc.setFillColor(...NAVY);
-    doc.roundedRect(barX, rowY, w, barH, 1.5, 1.5, 'F');
+    const maxValue = Math.max(1, ...rows.map((item) => item.value));
 
-    // value
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.setTextColor(...INK);
-    doc.text(String(item.value), right, rowY + barH - 0.6, { align: 'right' });
+    rows.forEach((item, index) => {
+      const rowY = rowTop + index * rowH;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9.5);
+      doc.setTextColor(...INK);
+      doc.text(item.name, margin, rowY + barH - 0.6, { maxWidth: labelW - 3 });
+
+      doc.setFillColor(...TRACK);
+      doc.roundedRect(barX, rowY, barMaxW, barH, 1.5, 1.5, 'F');
+      const w = Math.max(2, (barMaxW * item.value) / maxValue);
+      doc.setFillColor(...NAVY);
+      doc.roundedRect(barX, rowY, w, barH, 1.5, 1.5, 'F');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9.5);
+      doc.setTextColor(...INK);
+      doc.text(item.display, right, rowY + barH - 0.6, { align: 'right' });
+    });
+
+    return rowTop + rows.length * rowH;
+  };
+
+  data.breakdowns.forEach((section) => {
+    y = breakdown(section.title, section.rows, y) + 8;
   });
 
   // ---- Footer ----

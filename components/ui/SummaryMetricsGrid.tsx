@@ -1,27 +1,28 @@
 import { StyleSheet, View, useWindowDimensions, type ViewStyle } from 'react-native';
 
 import { AppMetricCard } from '@/components/ui/AppMetricCard';
-import { SUMMARY_METRICS } from '@/lib/analytics/summaryMetrics';
+import type { SummaryMetric } from '@/lib/analytics/summaryMetrics';
 
 // Below this the four cards get too narrow to read (labels wrap to two lines and
 // the value collides with its pill), so they fall back to 2x2.
 const WIDE_BREAKPOINT = 760;
 
 interface SummaryMetricsGridProps {
+  metrics: readonly SummaryMetric[];
   style?: ViewStyle;
 }
 
 /**
- * The four headline figures, shared by Analytics and the Dashboard. Four across
- * on a wide screen, 2x2 on a phone.
+ * The headline figures on Analytics — whichever set it's handed, so the call and
+ * sales views share one row. All across on a wide screen, 2-up on a phone.
  */
-export function SummaryMetricsGrid({ style }: SummaryMetricsGridProps) {
+export function SummaryMetricsGrid({ metrics, style }: SummaryMetricsGridProps) {
   const { width } = useWindowDimensions();
   const isWide = width >= WIDE_BREAKPOINT;
 
   return (
     <View style={[styles.grid, style]}>
-      {SUMMARY_METRICS.map((metric) => (
+      {metrics.map((metric) => (
         <View
           key={metric.label}
           style={[styles.cell, isWide ? styles.cellWide : styles.cellNarrow]}

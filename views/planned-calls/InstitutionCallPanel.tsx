@@ -112,7 +112,7 @@ export function InstitutionCallPanel() {
         <AppBottomSheetSelect
           title="Select Specialty"
           placeholder={
-            specialtiesQuery.isLoading ? 'Loading specialties...' : 'Select a specialty...'
+            specialtiesQuery.isLoading ? 'Loading specialties...' : 'Select Specialty'
           }
           options={specialtyOptions}
           value={selectedSpecialtyName}

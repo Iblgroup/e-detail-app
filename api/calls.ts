@@ -113,6 +113,79 @@ export const useCompletedDoctorIds = (mieId?: string) => {
   });
 };
 
+export interface MonthlyCallTotals {
+  thisMonth: number;
+  previousMonth: number;
+}
+
+export const monthlyCallTotalsKey = (mieId?: string) =>
+  ['monthly-call-totals', mieId ?? 'no-mie'] as const;
+
+export const getMonthlyCallTotals = async (
+  mieId: string,
+): Promise<MonthlyCallTotals> => {
+  const res = (await axios.get('/calls/monthly-totals', {
+    params: { mieId },
+  })) as unknown as { success: boolean } & MonthlyCallTotals;
+  return { thisMonth: res.thisMonth ?? 0, previousMonth: res.previousMonth ?? 0 };
+};
+
+/**
+ * Completed calls this month vs last, for the Analytics card. Cached (and
+ * offline-persisted) — last month's figure is settled, and this month's is close
+ * enough between refetches.
+ */
+export const useMonthlyCallTotals = (mieId?: string) => {
+  return useQuery({
+    queryKey: monthlyCallTotalsKey(mieId),
+    queryFn: () => getMonthlyCallTotals(mieId as string),
+    enabled: Boolean(mieId),
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+/** One bar of an engagement breakdown: a specialty or a brand. */
+export interface EngagementSlice {
+  name: string;
+  /** Average seconds of slide time per call. */
+  seconds: number;
+  /** Calls the average is taken over. */
+  calls: number;
+}
+
+export interface EngagementBreakdown {
+  bySpecialty: EngagementSlice[];
+  byBrand: EngagementSlice[];
+}
+
+export const engagementKey = (mieId?: string) =>
+  ['engagement', mieId ?? 'no-mie'] as const;
+
+export const getEngagement = async (
+  mieId: string,
+): Promise<EngagementBreakdown> => {
+  const res = (await axios.get('/calls/engagement', {
+    params: { mieId },
+  })) as unknown as { success: boolean } & Partial<EngagementBreakdown>;
+  return {
+    bySpecialty: res.bySpecialty ?? [],
+    byBrand: res.byBrand ?? [],
+  };
+};
+
+/**
+ * Average detailing time per call this month, by doctor specialty and by brand.
+ * Cached (and offline-persisted) like the rest of the analytics figures.
+ */
+export const useEngagement = (mieId?: string) => {
+  return useQuery({
+    queryKey: engagementKey(mieId),
+    queryFn: () => getEngagement(mieId as string),
+    enabled: Boolean(mieId),
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
 /** One completed call in the month's history with a doctor. */
 export interface DoctorCallRecord {
   callId: number;

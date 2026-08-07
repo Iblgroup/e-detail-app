@@ -4,10 +4,19 @@ import { AppButton } from '@/components/ui/AppButton';
 import { AppChartCard } from '@/components/ui/AppChartCard';
 import { AppLineChart, LineChartDataPoint } from '@/components/ui/AppLineChart';
 import { SummaryMetricsGrid } from '@/components/ui/SummaryMetricsGrid';
+import { AppSegmentedToggle, type SegmentedOption } from '@/components/ui/AppSegmentedToggle';
 import { ScreenLayout } from '@/components/ui/ScreenLayout';
 import { Colors } from '@/constants/theme';
-import { exportAnalyticsPdf } from '@/lib/analytics/exportPdf';
-import { SUMMARY_METRICS } from '@/lib/analytics/summaryMetrics';
+import { exportAnalyticsPdf, type BreakdownRow } from '@/lib/analytics/exportPdf';
+import { useSummaryMetrics } from '@/lib/analytics/summaryMetrics';
+import {
+  SALES_BY_BRAND,
+  SALES_BY_SPECIALTY,
+  SALES_METRICS,
+  SALES_MONTHLY,
+} from '@/lib/analytics/salesDemo';
+import { useEngagement, useMonthlyCallTotals, type EngagementSlice } from '@/api/calls';
+import { useAuth } from '@/providers/AuthProvider';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
@@ -21,13 +30,31 @@ const callVolumeData: LineChartDataPoint[] = [
   { label: 'Jun', value: 66 },
 ];
 
-const specialtyData: ColumnChartPoint[] = [
-  { label: 'Cardio', value: 45 },
-  { label: 'Neuro', value: 32 },
-  { label: 'GP', value: 28 },
-  { label: 'Pedia', value: 24 },
-  { label: 'Ortho', value: 18 },
-];
+/** Seconds as the app writes them everywhere else: "2m 30s", "45s". */
+function formatDuration(seconds: number) {
+  const safe = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(safe / 60);
+  const rest = safe % 60;
+  return minutes > 0 ? `${minutes}m ${rest}s` : `${rest}s`;
+}
+
+/** An engagement breakdown as the column chart wants it — time above each bar. */
+function toColumns(slices: EngagementSlice[]): ColumnChartPoint[] {
+  return slices.map((slice) => ({
+    label: slice.name,
+    value: slice.seconds,
+    topLabel: formatDuration(slice.seconds),
+  }));
+}
+
+/** The same columns as PDF rows — one shape drives the chart and the export. */
+function toRows(points: ColumnChartPoint[]): BreakdownRow[] {
+  return points.map((point) => ({
+    name: point.label,
+    value: point.value,
+    display: point.topLabel ?? String(point.value),
+  }));
+}
 
 const rfiData = {
   planned: 320,
@@ -37,11 +64,21 @@ const rfiData = {
 // RFI (Plan / Completed) card is hidden for now — flip to true to bring it back.
 const SHOW_RFI = false;
 
-// Calls completed: this month vs previous month.
-const monthlyCompleted = {
-  thisMonth: 284,
-  previousMonth: 262,
-};
+// Call Volume vs Goal is hidden for now — it still plots the placeholder series
+// above, not real calls. Flip to true to bring it back.
+const SHOW_CALL_VOLUME = false;
+
+/**
+ * Which half of the rep's performance the screen is reporting on. Sales has no
+ * data source yet — its cards render the same shapes with dashes, so the layout
+ * is settled for whenever the numbers arrive.
+ */
+type PerformanceView = 'call' | 'sales';
+
+const PERFORMANCE_VIEWS: SegmentedOption<PerformanceView>[] = [
+  { key: 'call', label: 'Call Performance', icon: 'call-outline' },
+  { key: 'sales', label: 'Sales Performance', icon: 'cash-outline' },
+];
 
 function formatRangeLabel(start: Date, end: Date) {
   const opts: Intl.DateTimeFormatOptions = {
@@ -55,10 +92,21 @@ function formatRangeLabel(start: Date, end: Date) {
 }
 
 export default function AnalyticsScreen() {
+  const { user } = useAuth();
   // Analytics is scoped to a date range (start → end); default to today.
   const [startDate, setStartDate] = useState(() => new Date());
   const [endDate, setEndDate] = useState(() => new Date());
   const [isExporting, setIsExporting] = useState(false);
+  const [view, setView] = useState<PerformanceView>('call');
+  const isSales = view === 'sales';
+  // Same figures the metric grid renders, so the PDF matches the screen.
+  const metrics = useSummaryMetrics();
+  // Completed calls this month vs last, straight from call_tracking.
+  const { data: monthlyCompleted } = useMonthlyCallTotals(user?.mieId);
+  // Average detailing time per call, by specialty and by brand.
+  const { data: engagement } = useEngagement(user?.mieId);
+  const specialtyColumns = toColumns(engagement?.bySpecialty ?? []);
+  const brandColumns = toColumns(engagement?.byBrand ?? []);
   const outstandingCalls = Math.max(0, rfiData.planned - rfiData.completed);
   const rfiCompletion = rfiData.planned > 0
     ? Math.round((rfiData.completed / rfiData.planned) * 100)
@@ -68,12 +116,45 @@ export default function AnalyticsScreen() {
     if (isExporting) return;
     setIsExporting(true);
     try {
-      await exportAnalyticsPdf({
-        dateLabel: formatRangeLabel(startDate, endDate),
-        metrics: SUMMARY_METRICS,
-        rfi: rfiData,
-        specialty: specialtyData,
-      });
+      // Export whichever view is on screen, so the document matches what the
+      // rep was looking at when they tapped it.
+      await exportAnalyticsPdf(
+        isSales
+          ? {
+              dateLabel: formatRangeLabel(startDate, endDate),
+              viewLabel: 'Sales Performance',
+              metrics: SALES_METRICS,
+              monthly: {
+                title: 'Sales Booked',
+                thisMonth: SALES_MONTHLY.thisMonth,
+                previousMonth: SALES_MONTHLY.previousMonth,
+              },
+              breakdowns: [
+                { title: 'Avg Sales by Specialty', rows: toRows(SALES_BY_SPECIALTY) },
+                { title: 'Avg Sales by Brand', rows: toRows(SALES_BY_BRAND) },
+              ],
+            }
+          : {
+              dateLabel: formatRangeLabel(startDate, endDate),
+              viewLabel: 'Call Performance',
+              metrics,
+              monthly: {
+                title: 'Calls Completed',
+                thisMonth: String(monthlyCompleted?.thisMonth ?? 0),
+                previousMonth: String(monthlyCompleted?.previousMonth ?? 0),
+              },
+              breakdowns: [
+                {
+                  title: 'Avg Engagement Time by Specialty',
+                  rows: toRows(specialtyColumns),
+                },
+                {
+                  title: 'Avg Engagement Time by Brand',
+                  rows: toRows(brandColumns),
+                },
+              ],
+            },
+      );
     } catch (error) {
       console.log('[analytics] PDF export failed', error);
       Alert.alert('Export failed', 'Could not generate the PDF report. Please try again.');
@@ -89,42 +170,48 @@ export default function AnalyticsScreen() {
       contentStyle={styles.content}
     >
       <View style={styles.headerActions}>
+        {/* One bordered control split down the middle — the two halves read as a
+            single range, but each still opens its own calendar exactly as before. */}
         <View style={styles.datesGroup}>
-          <View style={styles.dateFieldWrap}>
-            <Text style={styles.dateFieldLabel}>Start Date</Text>
-            <AppCalendarSheet
-              value={startDate}
-              onChange={(next) => {
-                setStartDate(next);
-                // Keep the range valid: pull the end up if it fell behind.
-                if (next > endDate) setEndDate(next);
-              }}
-              title="Select Start Date"
-              chevronColor={Colors.primary}
-              triggerStyle={styles.periodButton}
-              triggerContentStyle={styles.periodButtonContent}
-              triggerTextStyle={styles.periodButtonText}
-            />
-          </View>
-          <View style={styles.dateFieldWrap}>
-            <Text style={styles.dateFieldLabel}>End Date</Text>
-            <AppCalendarSheet
-              value={endDate}
-              onChange={(next) => {
-                setEndDate(next);
-                // Keep the range valid: pull the start back if it overtook.
-                if (next < startDate) setStartDate(next);
-              }}
-              title="Select End Date"
-              chevronColor={Colors.primary}
-              triggerStyle={styles.periodButton}
-              triggerContentStyle={styles.periodButtonContent}
-              triggerTextStyle={styles.periodButtonText}
-            />
+          <View style={styles.dateGroup}>
+            <View style={styles.dateGroupHalf}>
+              <Text style={styles.dateGroupLabel}>Start Date :</Text>
+              <AppCalendarSheet
+                value={startDate}
+                onChange={(next) => {
+                  setStartDate(next);
+                  // Keep the range valid: pull the end up if it fell behind.
+                  if (next > endDate) setEndDate(next);
+                }}
+                title="Select Start Date"
+                chevronColor={Colors.primary}
+                triggerStyle={styles.dateTrigger}
+                triggerContentStyle={styles.dateTriggerContent}
+                triggerTextStyle={styles.dateTriggerText}
+              />
+            </View>
+
+            <View style={styles.dateGroupDivider} />
+
+            <View style={styles.dateGroupHalf}>
+              <Text style={styles.dateGroupLabel}>End Date :</Text>
+              <AppCalendarSheet
+                value={endDate}
+                onChange={(next) => {
+                  setEndDate(next);
+                  // Keep the range valid: pull the start back if it overtook.
+                  if (next < startDate) setStartDate(next);
+                }}
+                title="Select End Date"
+                chevronColor={Colors.primary}
+                triggerStyle={styles.dateTrigger}
+                triggerContentStyle={styles.dateTriggerContent}
+                triggerTextStyle={styles.dateTriggerText}
+              />
+            </View>
           </View>
         </View>
         <View style={styles.exportFieldWrap}>
-          <Text style={styles.dateFieldLabel} />
           <AppButton
             label={isExporting ? 'Preparing…' : 'Export PDF'}
             onPress={handleExportPdf}
@@ -135,27 +222,45 @@ export default function AnalyticsScreen() {
         </View>
       </View>
 
-      <SummaryMetricsGrid />
+      <AppSegmentedToggle
+        options={PERFORMANCE_VIEWS}
+        value={view}
+        onChange={setView}
+      />
 
       <View style={styles.rfiCard}>
         <View style={styles.rfiHeader}>
           <View style={styles.rfiTitleRow}>
-            <Ionicons name="checkmark-done-outline" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>Calls Completed</Text>
+            <Ionicons
+              name={isSales ? 'cash-outline' : 'checkmark-done-outline'}
+              size={20}
+              color={Colors.primary}
+            />
+            <Text style={styles.sectionTitle}>
+              {isSales ? 'Sales Booked' : 'Calls Completed'}
+            </Text>
             <Text style={styles.rfiSubtitle}>(This / Previous Month)</Text>
           </View>
         </View>
         <View style={styles.rfiStatsRow}>
           <View style={styles.rfiStatBox}>
             <Text style={styles.rfiStatLabel}>This Month</Text>
-            <Text style={styles.rfiStatValue}>{monthlyCompleted.thisMonth}</Text>
+            <Text style={styles.rfiStatValue}>
+              {isSales ? SALES_MONTHLY.thisMonth : monthlyCompleted?.thisMonth ?? 0}
+            </Text>
           </View>
           <View style={styles.rfiStatBox}>
             <Text style={styles.rfiStatLabel}>Previous Month</Text>
-            <Text style={styles.rfiStatValue}>{monthlyCompleted.previousMonth}</Text>
+            <Text style={styles.rfiStatValue}>
+              {isSales
+                ? SALES_MONTHLY.previousMonth
+                : monthlyCompleted?.previousMonth ?? 0}
+            </Text>
           </View>
         </View>
       </View>
+
+      <SummaryMetricsGrid metrics={isSales ? SALES_METRICS : metrics} />
 
       {SHOW_RFI && (
       <View style={styles.rfiCard}>
@@ -199,29 +304,55 @@ export default function AnalyticsScreen() {
       )}
 
       <View style={styles.chartsGrid}>
-        <AppChartCard
-          title="Call Volume vs Goal"
-          icon={<Ionicons name="trending-up-outline" size={20} color={Colors.primary} />}
-          chartWrapperStyle={styles.lineChartWrapper}
-          style={styles.chartCard}
-        >
+        {SHOW_CALL_VOLUME && (
+          <AppChartCard
+            title="Call Volume vs Goal"
+            icon={<Ionicons name="trending-up-outline" size={20} color={Colors.primary} />}
+            chartWrapperStyle={styles.lineChartWrapper}
+            style={styles.chartCard}
+          >
             <AppLineChart data={callVolumeData} goal={50} maxValue={80} height={230} />
-        </AppChartCard>
+          </AppChartCard>
+        )}
 
         <AppChartCard
-          title="Specialty Distribution"
+          title={
+            isSales
+              ? 'Average Sales by Specialty'
+              : 'Average Engagement Time by Specialty'
+          }
           icon={<Ionicons name="people-outline" size={20} color={Colors.primary} />}
           chartWrapperStyle={styles.barChartWrapper}
           style={styles.chartCard}
         >
-            <AppColumnChart
-              data={specialtyData.map((point) => ({
-                label: point.label,
-                value: point.value,
-                topLabel: String(point.value),
-              }))}
-              height={210}
-            />
+          {isSales ? (
+            <AppColumnChart data={SALES_BY_SPECIALTY} height={210} />
+          ) : specialtyColumns.length > 0 ? (
+            <AppColumnChart data={specialtyColumns} height={210} />
+          ) : (
+            <Text style={styles.chartEmpty}>
+              No calls recorded this month yet.
+            </Text>
+          )}
+        </AppChartCard>
+
+        <AppChartCard
+          title={
+            isSales ? 'Average Sales by Brand' : 'Average Engagement Time by Brand'
+          }
+          icon={<Ionicons name="cube-outline" size={20} color={Colors.primary} />}
+          chartWrapperStyle={styles.barChartWrapper}
+          style={styles.chartCard}
+        >
+          {isSales ? (
+            <AppColumnChart data={SALES_BY_BRAND} height={210} />
+          ) : brandColumns.length > 0 ? (
+            <AppColumnChart data={brandColumns} height={210} />
+          ) : (
+            <Text style={styles.chartEmpty}>
+              No brands detailed this month yet.
+            </Text>
+          )}
         </AppChartCard>
       </View>
     </ScreenLayout>
@@ -236,57 +367,76 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     gap: 12,
-    alignItems: 'flex-end',
+    alignItems: 'stretch',
   },
-  // Left 50%: the two date pickers share this half.
+  // Left 50%: the joined start/end control.
   datesGroup: {
     flex: 1,
     flexBasis: 0,
-    flexDirection: 'row',
-    gap: 12,
   },
-  dateFieldWrap: {
-    flex: 1,
-    flexBasis: 0,
-    gap: 6,
-  },
-  // Right 50%: the export button.
+  // Right 50%: the export button, matched to the group's height.
   exportFieldWrap: {
     flex: 1,
     flexBasis: 0,
-    gap: 6,
+    justifyContent: 'center',
   },
-  dateFieldLabel: {
-    color: Colors.textMuted,
-    fontSize: 12,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginLeft: 2,
-    minHeight: 15,
-  },
-  periodButton: {
-    width: '100%',
-    minHeight: 40,
+  // The two pickers share one outline, split by a hairline.
+  dateGroup: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
     borderRadius: 12,
     borderWidth: 2,
     borderColor: Colors.primary,
-    backgroundColor: 'transparent',
+    backgroundColor: Colors.surface,
+    overflow: 'hidden',
   },
-  periodButtonContent: {
-    justifyContent: 'center',
+  // Label and date sit on one line: "START DATE : Aug 7, 2026".
+  dateGroupHalf: {
+    flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  dateGroupDivider: {
+    width: 2,
+    backgroundColor: Colors.primary,
+  },
+  dateGroupLabel: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  // The trigger drops its own chrome — the group owns the border now. It takes
+  // the leftover width so a long date shrinks rather than pushing the label out.
+  dateTrigger: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 22,
+    borderWidth: 0,
+    borderRadius: 0,
+    backgroundColor: 'transparent',
+    paddingHorizontal: 0,
+  },
+  dateTriggerContent: {
+    justifyContent: 'flex-start',
     gap: 6,
   },
-  periodButtonText: {
+  dateTriggerText: {
     fontSize: 14,
     fontWeight: '800',
     color: Colors.primary,
   },
   exportButton: {
     width: '100%',
-    minHeight: 40,
+    minHeight: 36,
     borderRadius: 12,
-    paddingVertical: 8,
+    paddingVertical: 5,
   },
   exportButtonText: {
     fontSize: 14,
@@ -409,5 +559,10 @@ const styles = StyleSheet.create({
   },
   barChartWrapper: {
     marginTop: 32,
+  },
+  chartEmpty: {
+    color: Colors.textMuted,
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

@@ -117,6 +117,9 @@ function getDoctorInterest(feedback: string, doctorInterest?: 'High' | 'Medium' 
 
   const tags = parseFeedbackTags(feedback);
 
+  // 'Not Interested' and 'Requested Literature' are no longer offered, but calls
+  // already recorded with them still have to read correctly — this maps stored
+  // feedback, so dropping them would silently reclassify past calls.
   if (tags.includes('Not Interested')) {
     return 'Low';
   }
@@ -129,13 +132,26 @@ function getDoctorInterest(feedback: string, doctorInterest?: 'High' | 'Medium' 
         'Asked for Samples',
         'Requested Literature',
         'Next Visit Planned',
+        // The doctor is asking for something to happen — as strong a signal as
+        // asking for samples.
+        'Plan Camp',
+        'Requested for Activity',
       ].includes(tag)
     )
   ) {
     return 'High';
   }
 
-  if (tags.some((tag) => ['Price Concern', 'Competitor Mentioned'].includes(tag))) {
+  if (
+    tags.some((tag) =>
+      [
+        'Price Concern',
+        'Competitor Mentioned',
+        // Writing someone else's brand is a competitive obstacle, not a refusal.
+        'Prescribing Other Brands',
+      ].includes(tag)
+    )
+  ) {
     return 'Medium';
   }
 

@@ -16,6 +16,12 @@ export const Colors = {
   danger: '#DC2626',
   dangerBg: '#FEE2E2',
 
+  // Disabled controls — always neutral gray, never a tint of the enabled
+  // colour, so "you can't press this yet" reads at a glance.
+  disabledBg: '#E9EBEF',
+  disabledBorder: '#D3D7DE',
+  disabledText: '#9CA3AF',
+
   // legacy light/dark kept for existing hooks
   light: {
     text: '#313131',

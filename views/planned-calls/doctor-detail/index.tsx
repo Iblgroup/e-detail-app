@@ -95,6 +95,17 @@ export default function DoctorDetail({
   // const [tokenAdded, setTokenAdded] = useState(false); // Add Card (Token) hidden
 
   /**
+   * The screen is either a call to make or a record to read, never both. While
+   * calls are still owed, the rep only needs the doctor's details and the call
+   * actions — the month's coverage and the brand/SKU breakdown are noise they
+   * have to scroll past to reach Arrived. Once the month's calls are done there
+   * is nothing left to start, so the analytics take the buttons' place.
+   * Doctor List opens the same screen purely as a reference, so it reads as
+   * finished too.
+   */
+  const showAnalytics = completed || viewOnly;
+
+  /**
    * Record the cancellation as a call_tracking row (call_outcome 'cancelled')
    * before clearing the arrival. Queued through the outbox, so a cancellation
    * made with no signal still reaches the server later.
@@ -153,18 +164,22 @@ export default function DoctorDetail({
           pmdcNumber={doctor.pmdcNumber}
         />
 
-        <MonthlyCoverageCard
-          visitCount={doctor.visitCount ?? 0}
-          maxVisits={doctor.maxVisits}
-          chamber={doctor.visitsChamber ?? 0}
-          group={doctor.visitsGroup ?? 0}
-          parking={doctor.visitsParking ?? 0}
-        />
+        {showAnalytics ? (
+          <>
+            <MonthlyCoverageCard
+              visitCount={doctor.visitCount ?? 0}
+              maxVisits={doctor.maxVisits}
+              chamber={doctor.visitsChamber ?? 0}
+              group={doctor.visitsGroup ?? 0}
+              parking={doctor.visitsParking ?? 0}
+            />
 
-        {/* Once the doctor has been called, the record itself: every call this
-            month combined — brands, SKUs, where the time went. */}
-        {(doctor.visitCount ?? 0) > 0 ? (
-          <MonthlyCallSummary mieId={user?.mieId} doctorId={doctor.id} />
+            {/* The record itself: every call this month combined — brands,
+                SKUs, where the time went. */}
+            {(doctor.visitCount ?? 0) > 0 ? (
+              <MonthlyCallSummary mieId={user?.mieId} doctorId={doctor.id} />
+            ) : null}
+          </>
         ) : null}
 
         {/* Planned Calls card hidden for now (placeholder schedule data). */}

@@ -2,7 +2,9 @@ import { Colors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
-type MetricTone = 'positive' | 'negative';
+// 'neutral' is for figures that aren't good or bad news — progress through a
+// target, say, which is simply low early in the month.
+type MetricTone = 'positive' | 'negative' | 'neutral';
 
 interface AppMetricCardProps {
   label: string;
@@ -23,7 +25,16 @@ export function AppMetricCard({
   accent = Colors.primary,
   style,
 }: AppMetricCardProps) {
-  const isPositive = tone === 'positive';
+  const pillStyle = {
+    positive: styles.pillPositive,
+    negative: styles.pillNegative,
+    neutral: styles.pillNeutral,
+  }[tone];
+  const pillTextStyle = {
+    positive: styles.pillTextPositive,
+    negative: styles.pillTextNegative,
+    neutral: styles.pillTextNeutral,
+  }[tone];
 
   return (
     <View style={[styles.card, style]}>
@@ -38,10 +49,8 @@ export function AppMetricCard({
       <View style={styles.valueRow}>
         <Text style={styles.value}>{value}</Text>
         {pill && (
-          <View style={[styles.pill, isPositive ? styles.pillPositive : styles.pillNegative]}>
-            <Text style={[styles.pillText, isPositive ? styles.pillTextPositive : styles.pillTextNegative]}>
-              {pill}
-            </Text>
+          <View style={[styles.pill, pillStyle]}>
+            <Text style={[styles.pillText, pillTextStyle]}>{pill}</Text>
           </View>
         )}
       </View>
@@ -104,6 +113,10 @@ const styles = StyleSheet.create({
   pillNegative: {
     backgroundColor: Colors.dangerBg,
   },
+  // Same blue chip the Call Reporting header uses for its count.
+  pillNeutral: {
+    backgroundColor: Colors.primaryLight,
+  },
   pillText: {
     fontSize: 13,
     fontWeight: '800',
@@ -113,5 +126,8 @@ const styles = StyleSheet.create({
   },
   pillTextNegative: {
     color: Colors.danger,
+  },
+  pillTextNeutral: {
+    color: Colors.secondary,
   },
 });

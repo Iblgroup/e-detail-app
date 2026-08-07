@@ -230,15 +230,15 @@ export default function PlannedCalls() {
             </View>
           </View>
 
-          {!doctorsQuery.isLoading && !doctorsQuery.isError && totalLoaded > 0 ? (
+          {/* Only the group setup panel carries a subtitle. Chamber and parking
+              show the count badge alone — their "showing X of Y … calls" line
+              repeated what the list already made obvious. */}
+          {showInstitutionPanel &&
+          !doctorsQuery.isLoading &&
+          !doctorsQuery.isError &&
+          totalLoaded > 0 ? (
             <Text style={styles.summaryText} numberOfLines={1}>
-              {showInstitutionPanel
-                ? // No list is rendered behind the group setup panel, so a
-                  // "showing X of Y" count would describe nothing.
-                  `${totalLoaded} doctors available for group calls`
-                : `${visibleDoctors.length} of ${filteredDoctors.length} ${
-                    showCompleted ? 'completed' : 'active'
-                  } ${callKind} calls`}
+              {`${totalLoaded} doctors available for group calls`}
             </Text>
           ) : null}
         </View>

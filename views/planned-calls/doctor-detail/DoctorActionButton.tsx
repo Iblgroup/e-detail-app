@@ -21,19 +21,17 @@ export function DoctorActionButton({
   active = false,
   variant = 'outline',
 }: DoctorActionButtonProps) {
-  const iconColor =
-    variant === 'filled'
-      ? enabled
-        ? '#FFFFFF'
-        : 'rgba(255,255,255,0.4)'
-      : variant === 'danger'
-        ? enabled
-          ? '#FFFFFF'
-          : 'rgba(255,255,255,0.45)'
-        : Colors.primary;
+  // Disabled looks the same for every variant: flat gray. A washed-out green or
+  // red still read as a live button, so reps tapped Start before arriving.
+  const iconColor = !enabled
+    ? Colors.disabledText
+    : variant === 'outline'
+      ? Colors.primary
+      : '#FFFFFF';
 
   return (
     <Pressable
+      disabled={!enabled}
       onPress={enabled ? onPress : undefined}
       style={({ pressed }) => [
         styles.button,
@@ -41,8 +39,8 @@ export function DoctorActionButton({
         variant === 'filled' && styles.filledButton,
         variant === 'danger' && styles.dangerButton,
         active && variant === 'outline' && styles.outlineButtonActive,
-        !enabled && variant === 'filled' && styles.filledButtonDisabled,
-        !enabled && variant === 'danger' && styles.dangerButtonDisabled,
+        // Last, so it overrides whichever variant painted the button.
+        !enabled && styles.disabledButton,
         pressed && enabled && styles.buttonPressed,
       ]}
     >
@@ -51,6 +49,7 @@ export function DoctorActionButton({
           styles.iconWrapper,
           variant === 'filled' && styles.filledIconWrapper,
           variant === 'danger' && styles.dangerIconWrapper,
+          !enabled && styles.disabledIconWrapper,
         ]}
       >
         <Ionicons name={iconName} size={26} color={iconColor} />
@@ -61,8 +60,7 @@ export function DoctorActionButton({
           variant === 'outline' && styles.outlineLabel,
           variant === 'filled' && styles.filledLabel,
           variant === 'danger' && styles.dangerLabel,
-          !enabled && variant === 'filled' && styles.filledLabelDisabled,
-          !enabled && variant === 'danger' && styles.dangerLabelDisabled,
+          !enabled && styles.disabledLabel,
         ]}
       >
         {label}
@@ -105,13 +103,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-  filledButtonDisabled: {
-    backgroundColor: '#A8C5B5',
-    borderWidth: 2,
-    borderColor: '#2EAF72',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
   dangerButton: {
     backgroundColor: '#D92D20',
     shadowColor: '#D92D20',
@@ -120,10 +111,11 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-  dangerButtonDisabled: {
-    backgroundColor: '#E8A6A0',
-    borderWidth: 2,
-    borderColor: '#D92D20',
+  // One neutral disabled skin for outline, filled and danger alike.
+  disabledButton: {
+    backgroundColor: Colors.disabledBg,
+    borderWidth: 1,
+    borderColor: Colors.disabledBorder,
     shadowOpacity: 0,
     elevation: 0,
   },
@@ -141,6 +133,9 @@ const styles = StyleSheet.create({
   dangerIconWrapper: {
     backgroundColor: 'rgba(255,255,255,0.18)',
   },
+  disabledIconWrapper: {
+    backgroundColor: 'rgba(107,114,128,0.12)',
+  },
   label: {
     fontSize: 16,
     fontWeight: '800',
@@ -153,13 +148,10 @@ const styles = StyleSheet.create({
   filledLabel: {
     color: '#FFFFFF',
   },
-  filledLabelDisabled: {
-    color: 'rgba(255,255,255,0.6)',
-  },
   dangerLabel: {
     color: '#FFFFFF',
   },
-  dangerLabelDisabled: {
-    color: 'rgba(255,255,255,0.65)',
+  disabledLabel: {
+    color: Colors.disabledText,
   },
 });

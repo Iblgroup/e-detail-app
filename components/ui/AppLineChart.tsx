@@ -25,9 +25,12 @@ const SECTIONS = 4;
 const AXIS_WIDTH = 34;
 
 /**
- * The project's line/area chart. Built on react-native-gifted-charts — the same
- * library as AppColumnChart — so the two sit together instead of one looking
- * hand-drawn next to the other. It replaces a bespoke SVG implementation.
+ * The project's line/area chart, built on react-native-gifted-charts. Styled to
+ * match AppColumnChart (same accent, same dashed rules) — that one is hand-built
+ * from RN views, so the pairing is by eye, not by shared library.
+ *
+ * Currently rendered nowhere: the only caller (Analytics' Call Volume vs Goal)
+ * is behind SHOW_CALL_VOLUME. The dependency is carried for when it returns.
  *
  * The library needs a pixel width, so the container is measured and the point
  * spacing derived from it; that also keeps the last point on the axis rather

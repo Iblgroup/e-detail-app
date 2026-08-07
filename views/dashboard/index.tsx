@@ -5,7 +5,6 @@ import { useAuth } from '@/providers/AuthProvider';
 import { Ionicons } from '@expo/vector-icons';
 import { router, type Href } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
-import { SummaryMetricsGrid } from '@/components/ui/SummaryMetricsGrid';
 import { DashboardNavCard } from './DashboardNavCard';
 
 // The tutorial video (TutorialVideoCard) and the performance chart
@@ -24,7 +23,7 @@ const NAV_CARDS: {
     href: '/doctor-list',
   },
   {
-    label: 'Content Viewing',
+    label: 'View Content',
     description: 'Brands and SKUs you detail',
     iconName: 'albums-outline',
     href: '/content-library',
@@ -60,8 +59,6 @@ export default function Dashboard() {
         />
       }
     >
-      <SummaryMetricsGrid />
-
       <View style={styles.grid}>
         <View style={styles.row}>
           {NAV_CARDS.slice(0, 2).map((card) => (

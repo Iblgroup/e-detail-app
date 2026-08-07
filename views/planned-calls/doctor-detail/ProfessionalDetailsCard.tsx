@@ -48,8 +48,12 @@ export function ProfessionalDetailsCard({
     <View style={styles.card}>
       <Text style={styles.title}>Professional Details</Text>
       <View style={styles.grid}>
+        {/* HOSPITAL and ADDRESS are TEMPORARILY hidden — no source column feeds
+            them yet, so both always rendered a dash. The props are kept so they
+            come back by uncommenting these two lines.
         <DetailField iconName="business-outline" label="HOSPITAL" value={hospital} />
         <DetailField iconName="location-outline" label="ADDRESS" value={address} />
+        */}
         <DetailField iconName="map-outline" label="CITY" value={city} />
         <DetailField iconName="time-outline" label="LAST VISIT" value={lastVisit} />
         <DetailField iconName="ribbon-outline" label="DOCTOR CLASS" value={doctorClass} />
